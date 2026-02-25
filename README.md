@@ -1,8 +1,8 @@
 # Server Sorcery 101 - DevOps Infrastructure Project 🧙‍♂️
 
-**Author:** [Your Name]  
+**Author:** Evans 
 **Date:** February 2026  
-**Project Duration:** [Start Date] - [End Date]
+**Project Duration:** January - TBD
 
 ## Project Overview 🎯
 
@@ -177,4 +177,4 @@ This project was completed as part of learning DevOps fundamentals, with focus o
 
 **Project Status:** Core infrastructure complete ✅  
 **Next Milestone:** Server role configuration  
-**Estimated Completion:** [Date]
+**Estimated Completion:** 
