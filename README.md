@@ -107,6 +107,14 @@ ssh devops@192.168.0.115  # load-balancer
 - [ ] Implement health checks
 - [ ] Test load balancing functionality
 
+### Load Balancer Configuration
+
+**URL:** http://192.168.0.115  
+**Algorithm:** Round-robin  
+**Backend Servers:**
+- web-server-1 (192.168.0.113)
+- web-server-2 (192.168.0.114)
+
 ## Key Learnings 🎓
 
 ### Technical Skills Acquired
