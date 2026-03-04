@@ -99,21 +99,34 @@ ssh devops@192.168.0.115  # load-balancer
 6. Enabled automatic security updates
 7. Disabled unnecessary services
 
-### Phase 4: Server Roles (Planned 📅)
+### Phase 4: Server Roles (Completed ✅)
 
-- [ ] Install nginx on web servers
-- [ ] Configure load balancer (HAProxy/nginx)
-- [ ] Deploy test application
-- [ ] Implement health checks
-- [ ] Test load balancing functionality
+- [x] Install nginx on web servers
+- [x] Configure load balancer (nginx)
+- [x] Create custom test pages
+- [x] Implement health checks
+- [x] Test load balancing functionality
+- [x] Configure firewall rules (port 80)
+
+**Services Deployed:**
+- nginx web servers on web-server-1 and web-server-2
+- nginx load balancer on load-balancer
+- Custom HTML pages served from both web servers
+- Load balancer distributing traffic via round-robin algorithm
 
 ### Load Balancer Configuration
 
-**URL:** http://192.168.0.115  
-**Algorithm:** Round-robin  
+**URL:** http://192.168.0.115
+**Algorithm:** Round-robin
 **Backend Servers:**
 - web-server-1 (192.168.0.113)
 - web-server-2 (192.168.0.114)
+
+**Access:**
+- Web Server 1: http://192.168.0.113
+- Web Server 2: http://192.168.0.114
+- Load Balancer: http://192.168.0.115
+- Health Check: http://192.168.0.115/health
 
 ## Key Learnings 🎓
 
@@ -153,14 +166,15 @@ ssh devops@192.168.0.115  # load-balancer
 
 ## Future Enhancements 🚀
 
-- [ ] Install and configure web application
-- [ ] Implement monitoring (Netdata/Prometheus)
+- [x] Install and configure web application
+- [x] Implement monitoring (Netdata)
+- [x] Add intrusion detection (Fail2Ban)
 - [ ] Set up VPN (WireGuard)
-- [ ] Add intrusion detection (Fail2Ban)
 - [ ] Create backup/restore procedures
 - [ ] Implement CI/CD pipeline
 
 ## Project Files 📁
+
 ```
 ServerSorcery101/
 ├── README.md (this file)
@@ -169,6 +183,7 @@ ServerSorcery101/
 └── scripts/
     └── security-hardening.sh
 ```
+
 ## Network Topology Diagram
 ```
 ┌─────────────────────────────────────────┐
@@ -188,49 +203,30 @@ ServerSorcery101/
 │                                          │
 └─────────────────────────────────────────┘
 ```
-```
-
----
-
-## What You've Created 🎉
-
-**A professional README that includes:**
-
-✅ **Project Overview** - What you built  
-✅ **Architecture** - How it's structured  
-✅ **Security Details** - What's secured  
-✅ **Access Instructions** - How to use it  
-✅ **Build Process** - What you did  
-✅ **Learnings** - What you gained  
-✅ **Troubleshooting** - Problems & solutions  
-✅ **Future Plans** - What's next  
-
-**This is exactly what employers want to see!** 💼
 
 ---
 
 ## Bonus Features Implemented ✅
 
-### 1. Monitoring (Netdata)
-- **Installation:** All 4 VMs running Netdata
+### 1. Monitoring (Netdata) ✅
+- **Installed:** All 4 VMs
 - **Access:** http://192.168.0.XXX:19999
-- **Features:** Real-time CPU, memory, network, disk monitoring
-- **Status:** ✅ Operational
+- **Features:** Real-time system monitoring
+- **Status:** Operational
 
-### 2. Load Balancer Health Checks
-- **Algorithm:** Round-robin with automatic failover
-- **Configuration:** 
-  - Max failures: 3 attempts
-  - Fail timeout: 30 seconds
-  - Connection timeout: 5 seconds
-- **Health Endpoint:** http://192.168.0.115/health
-- **Status:** ✅ Operational - Traffic successfully distributing
+### 2. Intrusion Prevention (Fail2Ban) ✅
+- **Installed:** All 4 VMs  
+- **Protection:** SSH brute-force prevention
+- **Configuration:**
+  - Max retry: 5 attempts
+  - Ban time: 10 minutes
+  - Protected service: SSH (port 22)
+- **Status:** Operational - All servers protected
 
-✅ 4 VMs fully operational
-✅ Complete security hardening
-✅ Static networking configured
-✅ Professional documentation created
-✅ Production-ready infrastructure
+### 3. Load Balancer Health Checks ✅
+- **Algorithm:** Round-robin with failover
+- **Auto-detection:** Failed servers removed from rotation
+- **Status:** Operational
 
 ## References & Resources 📚
 
@@ -245,6 +241,6 @@ This project was completed as part of learning DevOps fundamentals, with focus o
 
 ---
 
-**Project Status:** Core infrastructure complete ✅  
-**Next Milestone:** Server role configuration  
-**Estimated Completion:** 
+**Project Status:** Phase 4 complete ✅
+**Next Milestone:** Monitoring, VPN & CI/CD
+**Estimated Completion:** TBD
