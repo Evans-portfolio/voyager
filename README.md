@@ -228,6 +228,14 @@ http://192.168.0.115:19999  # load-balancer metrics
 
 **Time:** ~30 minutes
 
+**VPN (WireGuard):**
+- VPN server configured on load-balancer (192.168.0.115)
+- VPN network: 10.0.0.0/24, server IP: 10.0.0.1
+- Port: 51820/udp
+- Encryption: ChaCha20-Poly1305
+
+**Time:** ~45 minutes
+
 ## Bonus Features Implemented ✅
 
 ### 1. Monitoring - Netdata ✅
