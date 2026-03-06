@@ -324,6 +324,26 @@ proxy_read_timeout 5s;
 
 ---
 
+### 4. VPN - WireGuard ✅
+
+**Status:** Operational
+
+**Implementation:**
+- **VPN Server:** load-balancer (192.168.0.115)
+- **VPN Protocol:** WireGuard (modern, fast, secure)
+- **VPN Network:** 10.0.0.0/24
+- **Server VPN IP:** 10.0.0.1
+- **Client VPN IP:** 10.0.0.2
+- **Port:** 51820/udp
+- **Encryption:** ChaCha20-Poly1305 (authenticated encryption)
+
+**Features:**
+- Secure remote access to the internal network
+- Firewall rule added for UDP port 51820
+- Peer-based key exchange (no passwords)
+
+---
+
 ## Key Learnings 🎓
 
 ### Technical Skills Acquired
@@ -402,7 +422,7 @@ proxy_read_timeout 5s;
 - [ ] Connect web servers to app-server backend
 - [ ] Implement HTTPS with SSL/TLS certificates (Let's Encrypt)
 - [ ] Add database server (PostgreSQL/MySQL)
-- [ ] Set up VPN (WireGuard) for secure remote access
+- [x] Set up VPN (WireGuard) for secure remote access
 - [ ] Implement CI/CD pipeline (GitHub Actions → automated deployment)
 - [ ] Add centralized logging (ELK stack)
 - [ ] Create backup/restore procedures
@@ -505,7 +525,7 @@ This project was completed as part of learning DevOps fundamentals through the "
 **Completion Date:** February 2026  
 **Project Status:** ✅ COMPLETE  
 **Core Requirements:** 100% Complete  
-**Bonus Challenges:** 67% Complete (2 out of 3)
+**Bonus Challenges:** 100% Complete (3 out of 3)
 
 ### What's Working:
 - ✅ 4 fully secured VMs with SSH key authentication
