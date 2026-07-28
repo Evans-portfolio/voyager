@@ -9,3 +9,11 @@ output "vnet_id" {
 output "aks_subnet_id" {
   value = azurerm_subnet.aks.id
 }
+
+output "aks_cluster_name" {
+  value = azurerm_kubernetes_cluster.test.name
+}
+
+output "aks_kubelet_identity_object_id" {
+  value = azurerm_kubernetes_cluster.test.kubelet_identity[0].object_id
+}
