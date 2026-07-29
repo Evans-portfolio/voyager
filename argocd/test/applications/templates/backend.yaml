@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: backend
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://gitlab.com/kipkiruivans/server-sorcery-101.git
+    targetRevision: main
+    path: sample-app/backend/helm
+    helm:
+      values: |
+{{ .Files.Get "values-backend.yaml" | indent 8 }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: sample-app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
