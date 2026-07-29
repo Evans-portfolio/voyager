@@ -69,3 +69,21 @@ variable "acr_resource_group_name" {
   type        = string
   default     = "rg-shared"
 }
+
+variable "jumpbox_vm_size" {
+  description = "VM size for the jumpbox"
+  type        = string
+  default     = "Standard_B2s_v2"
+}
+
+variable "jumpbox_subnet_cidr" {
+  description = "CIDR for the jumpbox subnet"
+  type        = string
+  default     = "10.0.2.0/28"
+}
+
+variable "voyager_public_ip" {
+  description = "Public IP of the voyager control box, allowed to SSH into the jumpbox"
+  type        = string
+  default     = "65.109.11.230"
+}

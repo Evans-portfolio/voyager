@@ -58,7 +58,7 @@ resource "azurerm_kubernetes_cluster_node_pool" "monitoring" {
   name                  = "monitoring"
   kubernetes_cluster_id = azurerm_kubernetes_cluster.test.id
   vm_size               = var.monitoring_node_vm_size
-  node_count            = 1
+  node_count            = 0 # scaled to 0: no workload scheduled here yet, frees vCPU quota for jumpbox.tf
   vnet_subnet_id        = azurerm_subnet.aks.id
   mode                  = "User"
 
