@@ -87,3 +87,15 @@ variable "voyager_public_ip" {
   type        = string
   default     = "65.109.11.230"
 }
+
+variable "admin_kubeconfig_path" {
+  description = "Path to the AKS admin kubeconfig, fetched via az aks get-credentials --admin. Used only to source cert material for the kubernetes/helm providers; the actual connection goes through a local SSH tunnel (see argocd.tf)."
+  type        = string
+  default     = "/root/.kube/aks-test-admin-config"
+}
+
+variable "aks_tunnel_local_port" {
+  description = "Local port on the Terraform host that an SSH tunnel through the jumpbox forwards to the AKS private API server. Must be started manually before plan/apply (see argocd.tf comment)."
+  type        = number
+  default     = 16443
+}
