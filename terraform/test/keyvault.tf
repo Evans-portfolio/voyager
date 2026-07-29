@@ -81,3 +81,9 @@ output "keyvault_uri" {
 output "eso_identity_client_id" {
   value = azurerm_user_assigned_identity.eso.client_id
 }
+
+resource "azurerm_role_assignment" "jumpbox_keyvault_secrets_officer" {
+  scope                = azurerm_key_vault.test.id
+  role_definition_name = "Key Vault Secrets Officer"
+  principal_id         = azurerm_linux_virtual_machine.jumpbox.identity[0].principal_id
+}
