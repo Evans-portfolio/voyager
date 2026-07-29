@@ -87,3 +87,9 @@ resource "azurerm_role_assignment" "jumpbox_keyvault_secrets_officer" {
   role_definition_name = "Key Vault Secrets Officer"
   principal_id         = azurerm_linux_virtual_machine.jumpbox.identity[0].principal_id
 }
+
+resource "azurerm_role_assignment" "terraform_sp_keyvault_secrets_officer" {
+  scope                = azurerm_key_vault.test.id
+  role_definition_name = "Key Vault Secrets Officer"
+  principal_id         = var.terraform_sp_object_id
+}

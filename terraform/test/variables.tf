@@ -123,3 +123,45 @@ variable "privatelink_subnet_cidr" {
   type        = string
   default     = "10.0.3.0/28"
 }
+
+variable "postgres_subnet_cidr" {
+  description = "CIDR for the delegated Postgres Flexible Server subnet"
+  type        = string
+  default     = "10.0.4.0/28"
+}
+
+variable "postgres_sku_name" {
+  description = "Postgres Flexible Server SKU (tier_size)"
+  type        = string
+  default     = "B_Standard_B1ms"
+}
+
+variable "postgres_version" {
+  description = "PostgreSQL major version"
+  type        = string
+  default     = "16"
+}
+
+variable "postgres_storage_mb" {
+  description = "Postgres storage in MB (32768 = 32 GiB, Azure minimum)"
+  type        = number
+  default     = 32768
+}
+
+variable "postgres_backup_retention_days" {
+  description = "Backup/PITR retention window in days"
+  type        = number
+  default     = 7
+}
+
+variable "postgres_admin_username" {
+  description = "Postgres Flexible Server admin login"
+  type        = string
+  default     = "pgadmin"
+}
+
+variable "terraform_sp_object_id" {
+  description = "Object ID of the terraform-sp service principal (for self-granted Key Vault data-plane roles)"
+  type        = string
+  default     = "3a1d86f0-3183-412b-aab0-7dfb4c198ce5"
+}
