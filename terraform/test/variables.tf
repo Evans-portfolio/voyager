@@ -99,3 +99,15 @@ variable "aks_tunnel_local_port" {
   type        = number
   default     = 16443
 }
+
+variable "gitlab_repo_token" {
+  description = "GitLab Project Access Token (read_repository scope) for ArgoCD to pull server-sorcery-101"
+  type        = string
+  sensitive   = true
+}
+
+variable "gitlab_repo_url" {
+  description = "HTTPS URL of the server-sorcery-101 GitLab repo"
+  type        = string
+  default     = "https://gitlab.com/kipkiruivans/server-sorcery-101.git"
+}

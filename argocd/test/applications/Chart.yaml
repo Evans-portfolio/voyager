@@ -1,0 +1,5 @@
+apiVersion: v2
+name: applications
+description: App-of-apps root chart for the test environment. Templates are added here as each component (backend, frontend, external-dns, etc.) is built.
+type: application
+version: 0.1.0
