@@ -9,6 +9,7 @@ resource "azurerm_kubernetes_cluster" "test" {
   private_cluster_enabled             = true
   private_cluster_public_fqdn_enabled = false
   oidc_issuer_enabled                 = true
+  workload_identity_enabled           = true
 
   default_node_pool {
     name           = "main"

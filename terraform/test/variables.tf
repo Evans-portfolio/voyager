@@ -111,3 +111,15 @@ variable "gitlab_repo_url" {
   type        = string
   default     = "https://gitlab.com/kipkiruivans/server-sorcery-101.git"
 }
+
+variable "keyvault_name" {
+  description = "Globally-unique name for the test Key Vault"
+  type        = string
+  default     = "kv-sorcery-test01"
+}
+
+variable "privatelink_subnet_cidr" {
+  description = "CIDR for the Key Vault private endpoint subnet"
+  type        = string
+  default     = "10.0.3.0/28"
+}
