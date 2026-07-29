@@ -42,7 +42,7 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /healthz", handleHealthz)
+	mux.HandleFunc("GET /health", handleHealthz)
 	mux.HandleFunc("GET /history", handleHistory)
 
 	port := os.Getenv("PORT")
