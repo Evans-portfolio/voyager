@@ -1,0 +1,114 @@
+stages:
+  - test
+  - build
+  - deploy-test
+  - approve-prod
+  - deploy-prod
+
+variables:
+  ACR_REGISTRY: acrsorcerysorcery01.azurecr.io
+  BACKEND_IMAGE: $ACR_REGISTRY/server-sorcery-101-backend
+  FRONTEND_IMAGE: $ACR_REGISTRY/server-sorcery-101-frontend
+  GIT_STRATEGY: clone
+
+backend-test:
+  stage: test
+  image: golang:1.26
+  script:
+    - cd sample-app/backend
+    - go build ./...
+    - go vet ./...
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+build-backend:
+  stage: build
+  image: docker:27
+  services:
+    - docker:27-dind
+  script:
+    - docker login -u "$ACR_USERNAME" -p "$ACR_PASSWORD" $ACR_REGISTRY
+    - docker build -t $BACKEND_IMAGE:$CI_COMMIT_SHORT_SHA sample-app/backend
+    - docker push $BACKEND_IMAGE:$CI_COMMIT_SHORT_SHA
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+build-frontend:
+  stage: build
+  image: docker:27
+  services:
+    - docker:27-dind
+  script:
+    - docker login -u "$ACR_USERNAME" -p "$ACR_PASSWORD" $ACR_REGISTRY
+    - docker build -t $FRONTEND_IMAGE:$CI_COMMIT_SHORT_SHA sample-app/frontend
+    - docker push $FRONTEND_IMAGE:$CI_COMMIT_SHORT_SHA
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+.deploy_template: &deploy_template
+  tags:
+    - jumpbox
+  before_script:
+    - az login --identity -o none
+    - az aks get-credentials -g rg-test -n aks-test --overwrite-existing
+    - kubectl -n argocd port-forward svc/argocd-server 18443:443 &
+    - sleep 5
+
+deploy-test:
+  stage: deploy-test
+  <<: *deploy_template
+  script:
+    - 'sed -i "s/tag: \".*\"/tag: \"$CI_COMMIT_SHORT_SHA\"/" argocd/test/applications/values-backend.yaml'
+    - 'sed -i "s/tag: \".*\"/tag: \"$CI_COMMIT_SHORT_SHA\"/" argocd/test/applications/values-frontend.yaml'
+    - git config user.email "gitlab-ci@server-sorcery-101.local"
+    - git config user.name "GitLab CI"
+    - git add argocd/test/applications/values-backend.yaml argocd/test/applications/values-frontend.yaml
+    - >
+      if git diff --cached --quiet; then
+        echo "No image tag changes to commit";
+      else
+        git commit -m "ci: deploy backend/frontend $CI_COMMIT_SHORT_SHA to test [skip ci]";
+        git remote set-url origin "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/kipkiruivans/server-sorcery-101.git";
+        git push origin HEAD:main;
+      fi
+    - argocd app sync backend frontend --server localhost:18443 --insecure --grpc-web --auth-token "$ARGOCD_AUTH_TOKEN"
+    - argocd app wait backend frontend --health --sync --timeout 300 --server localhost:18443 --insecure --grpc-web --auth-token "$ARGOCD_AUTH_TOKEN"
+  environment:
+    name: test
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+approve-prod:
+  stage: approve-prod
+  tags:
+    - jumpbox
+  script:
+    - echo "Manual approval gate for prod deploy"
+  when: manual
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+deploy-prod:
+  stage: deploy-prod
+  <<: *deploy_template
+  script:
+    - 'sed -i "s/tag: \".*\"/tag: \"$CI_COMMIT_SHORT_SHA\"/" argocd/prod/applications/values-backend.yaml'
+    - 'sed -i "s/tag: \".*\"/tag: \"$CI_COMMIT_SHORT_SHA\"/" argocd/prod/applications/values-frontend.yaml'
+    - git config user.email "gitlab-ci@server-sorcery-101.local"
+    - git config user.name "GitLab CI"
+    - git add argocd/prod/applications/values-backend.yaml argocd/prod/applications/values-frontend.yaml
+    - >
+      if git diff --cached --quiet; then
+        echo "No image tag changes to commit";
+      else
+        git commit -m "ci: deploy backend/frontend $CI_COMMIT_SHORT_SHA to prod [skip ci]";
+        git remote set-url origin "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/kipkiruivans/server-sorcery-101.git";
+        git push origin HEAD:main;
+      fi
+    - argocd app sync backend-prod frontend-prod --server localhost:18443 --insecure --grpc-web --auth-token "$ARGOCD_AUTH_TOKEN"
+    - argocd app wait backend-prod frontend-prod --health --sync --timeout 300 --server localhost:18443 --insecure --grpc-web --auth-token "$ARGOCD_AUTH_TOKEN"
+  environment:
+    name: prod
+  needs: ["approve-prod"]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
