@@ -165,3 +165,9 @@ variable "terraform_sp_object_id" {
   type        = string
   default     = "3a1d86f0-3183-412b-aab0-7dfb4c198ce5"
 }
+
+variable "private_dns_zone_name" {
+  description = "Placeholder private DNS zone name (real domain deferred)"
+  type        = string
+  default     = "test-private.example.com"
+}

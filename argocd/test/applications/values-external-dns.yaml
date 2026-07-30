@@ -1,0 +1,41 @@
+provider:
+  name: azure-private-dns
+
+extraArgs:
+  azure-resource-group: rg-test
+  azure-subscription-id: "1e861794-7144-4865-b882-75311ff1225d"
+  azure-user-assigned-identity-client-id: "f447ca35-00d1-4e2e-b4ad-3840b2ae73c3"
+  txt-owner-id: aks-test
+  publish-internal-services: true
+
+domainFilters:
+  - test-private.example.com
+
+secretConfiguration:
+  enabled: true
+  mountPath: /etc/kubernetes/azure.json
+  subPath: azure.json
+  data:
+    azure.json: |
+      {
+        "tenantId": "7ba328b9-8f9f-4502-b9a0-65884b7f21bc",
+        "subscriptionId": "1e861794-7144-4865-b882-75311ff1225d",
+        "resourceGroup": "rg-test",
+        "useWorkloadIdentityExtension": true
+      }
+
+podLabels:
+  azure.workload.identity/use: "true"
+
+serviceAccount:
+  annotations:
+    azure.workload.identity/client-id: "f447ca35-00d1-4e2e-b4ad-3840b2ae73c3"
+
+nodeSelector:
+  kubernetes.azure.com/agentpool: tools
+
+tolerations:
+  - key: kubernetes.azure.com/scalesetpriority
+    operator: Equal
+    value: spot
+    effect: NoSchedule
