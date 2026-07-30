@@ -1,0 +1,20 @@
+image:
+  repository: acrsorcerysorcery01.azurecr.io/server-sorcery-101-frontend
+  tag: "0e400b2"
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+nodeSelector:
+  kubernetes.azure.com/agentpool: main
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 32Mi
+  limits:
+    cpu: 100m
+    memory: 64Mi
+
+service:
+  port: 80
