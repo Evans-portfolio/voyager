@@ -51,8 +51,12 @@ build-frontend:
   before_script:
     - az login --identity -o none
     - az aks get-credentials -g rg-test -n aks-test --overwrite-existing
-    - kubectl -n argocd port-forward svc/argocd-server 18443:443 &
+    - kubectl -n argocd port-forward svc/argocd-server 18443:443 > /tmp/argocd-pf-$CI_JOB_ID.log 2>&1 &
+    - echo $! > /tmp/argocd-pf-$CI_JOB_ID.pid
     - sleep 5
+  after_script:
+    - kill $(cat /tmp/argocd-pf-$CI_JOB_ID.pid) 2>/dev/null || true
+    - rm -f /tmp/argocd-pf-$CI_JOB_ID.log /tmp/argocd-pf-$CI_JOB_ID.pid
 
 deploy-test:
   stage: deploy-test
@@ -68,7 +72,7 @@ deploy-test:
         echo "No image tag changes to commit";
       else
         git commit -m "ci: deploy backend/frontend $CI_COMMIT_SHORT_SHA to test [skip ci]";
-        git remote set-url origin "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/kipkiruivans/server-sorcery-101.git";
+        git remote set-url origin "https://gitlab-push-token:${GITLAB_PUSH_TOKEN}@gitlab.com/kipkiruivans/server-sorcery-101.git";
         git push origin HEAD:main;
       fi
     - argocd app sync backend frontend --server localhost:18443 --insecure --grpc-web --auth-token "$ARGOCD_AUTH_TOKEN"
@@ -102,7 +106,7 @@ deploy-prod:
         echo "No image tag changes to commit";
       else
         git commit -m "ci: deploy backend/frontend $CI_COMMIT_SHORT_SHA to prod [skip ci]";
-        git remote set-url origin "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/kipkiruivans/server-sorcery-101.git";
+        git remote set-url origin "https://gitlab-push-token:${GITLAB_PUSH_TOKEN}@gitlab.com/kipkiruivans/server-sorcery-101.git";
         git push origin HEAD:main;
       fi
     - argocd app sync backend-prod frontend-prod --server localhost:18443 --insecure --grpc-web --auth-token "$ARGOCD_AUTH_TOKEN"
