@@ -171,3 +171,9 @@ variable "private_dns_zone_name" {
   type        = string
   default     = "test-private.example.com"
 }
+
+variable "slack_webhook_url" {
+  description = "Slack incoming webhook URL for Alertmanager notifications"
+  type        = string
+  sensitive   = true
+}

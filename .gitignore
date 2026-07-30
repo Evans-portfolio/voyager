@@ -7,3 +7,4 @@ tfplan.out
 *.postgres-admin-password.tmp
 node_modules/
 dist/
+.slack-webhook-url.tmp
