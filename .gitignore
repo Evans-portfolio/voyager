@@ -8,3 +8,4 @@ tfplan.out
 node_modules/
 dist/
 .slack-webhook-url.tmp
+.ci-secrets/
