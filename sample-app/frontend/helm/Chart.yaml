@@ -3,4 +3,4 @@ name: frontend
 description: Server Sorcery 101 React frontend (nginx-served)
 type: application
 version: 0.1.0
-appVersion: "0e400b2"
+appVersion: "1d81b27"
