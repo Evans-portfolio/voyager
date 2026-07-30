@@ -5,3 +5,5 @@
 crash.log
 tfplan.out
 *.postgres-admin-password.tmp
+node_modules/
+dist/
