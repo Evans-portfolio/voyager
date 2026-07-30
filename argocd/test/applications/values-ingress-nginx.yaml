@@ -1,0 +1,10 @@
+controller:
+  service:
+    type: LoadBalancer
+  nodeSelector:
+    kubernetes.azure.com/agentpool: tools
+  tolerations:
+    - key: kubernetes.azure.com/scalesetpriority
+      operator: Equal
+      value: spot
+      effect: NoSchedule
