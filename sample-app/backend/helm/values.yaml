@@ -1,6 +1,6 @@
 image:
   repository: acrsorcerysorcery01.azurecr.io/server-sorcery-101-backend
-  tag: "2034edc"
+  tag: "3d0688f"
   pullPolicy: IfNotPresent
 
 replicaCount: 1
