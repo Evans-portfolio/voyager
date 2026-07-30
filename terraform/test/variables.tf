@@ -177,3 +177,15 @@ variable "slack_webhook_url" {
   type        = string
   sensitive   = true
 }
+
+variable "prod_resource_group_name" {
+  description = "Resource group of the prod environment, for cross-stack VNet peering"
+  type        = string
+  default     = "rg-prod"
+}
+
+variable "prod_vnet_name" {
+  description = "Name of the prod VNet, for cross-stack VNet peering"
+  type        = string
+  default     = "vnet-prod"
+}
