@@ -12,7 +12,15 @@ import (
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
+
+var historyRequestsTotal = promauto.NewCounter(prometheus.CounterOpts{
+	Name: "backend_history_requests_total",
+	Help: "Total number of requests to the /history endpoint",
+})
 
 type MetricSnapshot struct {
 	ID           int64     `json:"id"`
@@ -44,6 +52,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", handleHealthz)
 	mux.HandleFunc("GET /history", handleHistory)
+	mux.Handle("GET /metrics", promhttp.Handler())
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -100,6 +109,7 @@ func handleHealthz(w http.ResponseWriter, r *http.Request) {
 // handleHistory records a snapshot of the process's current runtime metrics
 // and returns the most recent snapshots, newest first.
 func handleHistory(w http.ResponseWriter, r *http.Request) {
+	historyRequestsTotal.Inc()
 	ctx := r.Context()
 
 	var mem runtime.MemStats
