@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: default
+  namespace: argocd
+spec:
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  destinations:
+    - namespace: '*'
+      server: '*'
+  sourceRepos:
+    - '*'
+  roles:
+    - name: gitlab-ci
+      description: Scoped access for the GitLab CI pipeline to deploy backend/frontend
+      policies:
+        - p, proj:default:gitlab-ci, applications, get, default/backend, allow
+        - p, proj:default:gitlab-ci, applications, get, default/frontend, allow
+        - p, proj:default:gitlab-ci, applications, sync, default/backend, allow
+        - p, proj:default:gitlab-ci, applications, sync, default/frontend, allow
