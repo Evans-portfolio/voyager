@@ -60,6 +60,7 @@ func main() {
 	}
 
 	addr := ":" + port
+	log.Printf("routes registered: /health /history /metrics")
 	log.Printf("listening on %s", addr)
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		log.Fatalf("server failed: %v", err)
