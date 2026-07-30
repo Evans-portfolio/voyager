@@ -1,0 +1,33 @@
+config:
+  datasource:
+    host: psql-test-sorcery.postgres.database.azure.com
+    port: "5432"
+    user: pgadmin
+    database: postgres
+    sslmode: require
+    passwordSecret:
+      name: postgres-credentials
+      key: password
+
+nodeSelector:
+  kubernetes.azure.com/agentpool: tools
+
+tolerations:
+  - key: kubernetes.azure.com/scalesetpriority
+    operator: Equal
+    value: spot
+    effect: NoSchedule
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 32Mi
+  limits:
+    cpu: 100m
+    memory: 64Mi
+
+serviceMonitor:
+  enabled: true
+  namespace: monitoring
+  labels:
+    release: monitoring
