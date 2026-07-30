@@ -18,3 +18,5 @@ resources:
 
 service:
   port: 80
+
+externalDnsHostname: frontend.test-private.example.com
