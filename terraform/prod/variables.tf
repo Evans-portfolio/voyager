@@ -45,3 +45,51 @@ variable "test_vnet_name" {
   type        = string
   default     = "vnet-test"
 }
+
+variable "shared_jumpbox_name" {
+  description = "Name of the shared jumpbox VM (lives in terraform/test), for cross-stack IAM and the Postgres/Key Vault secret relay"
+  type        = string
+  default     = "vm-test-jumpbox"
+}
+
+variable "keyvault_name" {
+  description = "Globally-unique name for the prod Key Vault"
+  type        = string
+  default     = "kv-sorcery-prod01"
+}
+
+variable "terraform_sp_object_id" {
+  description = "Object ID of the terraform-sp service principal (for self-granted Key Vault data-plane roles)"
+  type        = string
+  default     = "3a1d86f0-3183-412b-aab0-7dfb4c198ce5"
+}
+
+variable "postgres_sku_name" {
+  description = "Postgres Flexible Server SKU (tier_size) - General Purpose D2s_v3. Burstable does not actually support ZoneRedundant HA despite the SKU-capability API listing it as supported; General Purpose is the smallest tier that genuinely does."
+  type        = string
+  default     = "GP_Standard_D2s_v3"
+}
+
+variable "postgres_version" {
+  description = "PostgreSQL major version"
+  type        = string
+  default     = "16"
+}
+
+variable "postgres_storage_mb" {
+  description = "Postgres storage in MB (32768 = 32 GiB, Azure minimum)"
+  type        = number
+  default     = 32768
+}
+
+variable "postgres_backup_retention_days" {
+  description = "Backup/PITR retention window in days"
+  type        = number
+  default     = 30
+}
+
+variable "postgres_admin_username" {
+  description = "Postgres Flexible Server admin login"
+  type        = string
+  default     = "pgadmin"
+}

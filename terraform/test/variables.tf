@@ -189,3 +189,9 @@ variable "prod_vnet_name" {
   type        = string
   default     = "vnet-prod"
 }
+
+variable "prod_vnet_address_space" {
+  description = "CIDR of the prod VNet, for the jumpbox's outbound NSG rule (explicit, not the VirtualNetwork tag - see jumpbox.tf comment)"
+  type        = string
+  default     = "10.1.0.0/16"
+}

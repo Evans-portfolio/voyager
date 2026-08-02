@@ -33,6 +33,25 @@ resource "azurerm_network_security_group" "jumpbox" {
     source_address_prefix      = "*"
     destination_address_prefix = "*"
   }
+
+  # test-ip-flow-verify showed outbound traffic to prod's peered range hitting
+  # the default DenyAllOutBound rule, not the default AllowVnetOutBound rule -
+  # the "VirtualNetwork" service tag isn't reliably covering the peered range
+  # for this NSG's outbound evaluation, even though routing (a separate
+  # mechanism) correctly resolves it via VNetPeering. Explicit CIDR instead
+  # of relying on the tag, same reasoning already applied to prod's inbound
+  # NSGs.
+  security_rule {
+    name                       = "AllowOutboundToProd"
+    priority                   = 200
+    direction                  = "Outbound"
+    access                     = "Allow"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
+    destination_address_prefix = var.prod_vnet_address_space
+  }
 }
 
 resource "azurerm_subnet_network_security_group_association" "jumpbox" {
