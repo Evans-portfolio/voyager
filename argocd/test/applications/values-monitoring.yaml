@@ -165,6 +165,56 @@ grafana:
               }
             ]
           }
+      app-logs:
+        json: |
+          {
+            "title": "Server Sorcery Logs",
+            "uid": "app-logs",
+            "schemaVersion": 39,
+            "time": { "from": "now-1h", "to": "now" },
+            "panels": [
+              {
+                "id": 1,
+                "type": "timeseries",
+                "title": "Log Volume by Namespace",
+                "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+                "datasource": "Loki",
+                "targets": [ { "expr": "sum by (namespace) (count_over_time({namespace=~\".+\"}[$__interval]))", "datasource": "Loki" } ]
+              },
+              {
+                "id": 2,
+                "type": "timeseries",
+                "title": "Error/Warning Log Rate by Namespace",
+                "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+                "datasource": "Loki",
+                "targets": [ { "expr": "sum by (namespace) (count_over_time({namespace=~\".+\"} |~ \"(?i)error|warn|fail\" [$__interval]))", "datasource": "Loki" } ]
+              },
+              {
+                "id": 3,
+                "type": "logs",
+                "title": "Backend Logs",
+                "gridPos": { "x": 0, "y": 8, "w": 12, "h": 10 },
+                "datasource": "Loki",
+                "targets": [ { "expr": "{namespace=\"sample-app\", app=\"backend\"}", "datasource": "Loki" } ]
+              },
+              {
+                "id": 4,
+                "type": "logs",
+                "title": "Frontend Logs",
+                "gridPos": { "x": 12, "y": 8, "w": 12, "h": 10 },
+                "datasource": "Loki",
+                "targets": [ { "expr": "{namespace=\"sample-app\", app=\"frontend\"}", "datasource": "Loki" } ]
+              },
+              {
+                "id": 5,
+                "type": "logs",
+                "title": "Recent Errors/Warnings (All Namespaces)",
+                "gridPos": { "x": 0, "y": 18, "w": 24, "h": 10 },
+                "datasource": "Loki",
+                "targets": [ { "expr": "{namespace=~\".+\"} |~ \"(?i)error|warn|fail\"", "datasource": "Loki" } ]
+              }
+            ]
+          }
 
 additionalPrometheusRulesMap:
   server-sorcery-alerts:
