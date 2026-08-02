@@ -86,6 +86,11 @@ grafana:
       memory: 512Mi
   persistence:
     enabled: false
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      access: proxy
+      url: http://loki.monitoring.svc.cluster.local:3100
   sidecar:
     dashboards:
       enabled: true
@@ -114,6 +119,10 @@ grafana:
         gnetId: 9628
         revision: 8
         datasource: Prometheus
+      logs:
+        gnetId: 13639
+        revision: 1
+        datasource: Loki
       backend-app:
         json: |
           {
