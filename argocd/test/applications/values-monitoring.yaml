@@ -195,7 +195,7 @@ additionalPrometheusRulesMap:
               summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is restarting too often"
               description: "Container {{ $labels.container }} in {{ $labels.namespace }}/{{ $labels.pod }} has restarted more than 3 times in 15 minutes."
           - alert: ContainerMemoryHigh
-            expr: (container_memory_working_set_bytes{container!="",container!="POD"} / container_spec_memory_limit_bytes{container!="",container!="POD",container_spec_memory_limit_bytes>0}) * 100 > 90
+            expr: (container_memory_working_set_bytes{container!="",container!="POD"} / (container_spec_memory_limit_bytes{container!="",container!="POD"} > 0)) * 100 > 90
             for: 10m
             labels:
               severity: warning
