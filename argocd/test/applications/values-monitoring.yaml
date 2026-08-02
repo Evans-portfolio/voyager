@@ -218,6 +218,14 @@ additionalPrometheusRulesMap:
             annotations:
               summary: "Kubernetes API server target is unreachable"
               description: "Prometheus cannot scrape the apiserver target."
+          - alert: PostgresExporterDown
+            expr: up{job="postgres-exporter-prometheus-postgres-exporter"} == 0
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Postgres exporter target is unreachable"
+              description: "Prometheus cannot scrape the postgres-exporter target, so Postgres health and connection alerts are blind."
           - alert: PostgresConnectionsHigh
             expr: sum(pg_stat_activity_count) / pg_settings_max_connections * 100 > 80
             for: 10m
