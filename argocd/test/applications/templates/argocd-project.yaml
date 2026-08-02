@@ -20,3 +20,7 @@ spec:
         - p, proj:default:gitlab-ci, applications, get, default/frontend, allow
         - p, proj:default:gitlab-ci, applications, sync, default/backend, allow
         - p, proj:default:gitlab-ci, applications, sync, default/frontend, allow
+        - p, proj:default:gitlab-ci, applications, get, default/backend-prod, allow
+        - p, proj:default:gitlab-ci, applications, get, default/frontend-prod, allow
+        - p, proj:default:gitlab-ci, applications, sync, default/backend-prod, allow
+        - p, proj:default:gitlab-ci, applications, sync, default/frontend-prod, allow
