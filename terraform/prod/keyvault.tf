@@ -74,3 +74,35 @@ resource "azurerm_role_assignment" "jumpbox_keyvault_secrets_officer" {
 output "keyvault_uri" {
   value = azurerm_key_vault.prod.vault_uri
 }
+
+# Workload identity for the External Secrets Operator running inside
+# aks-prod - same pattern as terraform/test/keyvault.tf's id-test-eso,
+# scoped to prod's own Key Vault and prod's own OIDC issuer. Needed so
+# prod's ArgoCD-managed ExternalSecret (postgres-credentials) can pull
+# postgres-admin-password from kv-sorcery-prod01 without cross-VNet
+# traffic - ESO runs inside aks-prod itself and talks to prod's Key
+# Vault over its own private endpoint.
+resource "azurerm_user_assigned_identity" "eso" {
+  name                = "id-prod-eso"
+  resource_group_name = azurerm_resource_group.prod.name
+  location            = azurerm_resource_group.prod.location
+}
+
+resource "azurerm_federated_identity_credential" "eso" {
+  name                = "fic-prod-eso"
+  resource_group_name = azurerm_resource_group.prod.name
+  parent_id           = azurerm_user_assigned_identity.eso.id
+  audience            = ["api://AzureADTokenExchange"]
+  issuer              = azurerm_kubernetes_cluster.prod.oidc_issuer_url
+  subject             = "system:serviceaccount:external-secrets:external-secrets"
+}
+
+resource "azurerm_role_assignment" "eso_keyvault_secrets_user" {
+  scope                = azurerm_key_vault.prod.id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.eso.principal_id
+}
+
+output "eso_identity_client_id" {
+  value = azurerm_user_assigned_identity.eso.client_id
+}
