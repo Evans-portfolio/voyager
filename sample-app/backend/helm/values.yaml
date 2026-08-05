@@ -27,3 +27,6 @@ env:
   DB_SSLMODE: require
 
 dbSecretName: postgres-credentials
+
+serviceMonitor:
+  enabled: true

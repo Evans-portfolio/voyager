@@ -13,3 +13,6 @@ resources:
 
 env:
   DB_HOST: psql-prod-sorcery.postgres.database.azure.com
+
+serviceMonitor:
+  enabled: false
