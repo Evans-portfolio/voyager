@@ -311,6 +311,61 @@ fine. It's a strong example of why real end-to-end verification (checking
 the actual behavior, not just "object applied without error") matters more
 than trusting green checkmarks.
 
+### Cross-VNet ArgoCD wall — pivot to one ArgoCD per cluster
+
+The original plan had test's ArgoCD manage both test and prod as remote
+clusters (a single control-plane instance, the standard app-of-apps setup
+this repo started with). Wiring that up for prod hit a real, thoroughly
+diagnosed networking wall: test's ArgoCD pods could not reach aks-prod's
+private API server at all, and each layer that could plausibly explain it
+was checked and ruled out or fixed without resolving the actual block:
+
+- NSG rules on both subnets confirmed correct (`az network nsg rule list`)
+- DNS confirmed resolving correctly from a pod on the tools node pool
+- VNet peering's `allowForwardedTraffic` flag flipped `true` on both sides
+  after confirming the correlation (Azure CNI Overlay requires IP
+  forwarding on AKS node NICs for pod traffic to cross a peering; the
+  jumpbox, with IP forwarding disabled, reached prod fine over the same
+  peering the whole time)
+- Still blocked. A `tcpdump` from inside a pod on the tools node pool,
+  filtered to the destination IP and port, showed the SYN leaving the
+  pod's interface with **zero response of any kind** — no SYN-ACK, no
+  RST, nothing. Pinning that down further would require node- or
+  peering-level packet capture beyond what a pod-level debug tool can see.
+
+Rather than keep spending cycles at a layer that needs infrastructure
+access beyond this project's debug tooling, aks-prod now runs its own
+independent ArgoCD instance, installed the same way as test's (same Helm
+chart/version, same app-of-apps pattern), managing only its own
+Applications. Each cluster's ArgoCD talks exclusively to its own local
+Kubernetes API (`https://kubernetes.default.svc`) — no cross-VNet GitOps
+control-plane traffic at all. This is a standard, legitimate GitOps
+pattern (per-cluster ArgoCD), not a workaround, and it fully sidesteps the
+class of problem above rather than papering over it.
+
+Two deliberate differences from test's ArgoCD kept in this second
+instance:
+
+- **Prod's Applications stay manual-sync only** (no `automated: {prune,
+  selfHeal}`) for `backend-prod`/`frontend-prod` and their root
+  app-of-apps — this was already the project's design decision for prod
+  application deployments, unrelated to the ArgoCD-per-cluster pivot, and
+  it carried over unchanged. Platform tooling installed alongside them
+  (External Secrets Operator, ingress-nginx) does use automated sync,
+  same as test — that decision is about gating *application* deploys
+  behind manual approval, not about how cluster infrastructure is kept
+  in sync.
+- **No tools/Spot node pool scheduling** — prod's `tools` pool is kept at
+  0 nodes by default (same cost-conservation reasoning as elsewhere in
+  this repo), so ArgoCD, External Secrets, and ingress-nginx all schedule
+  onto prod's untainted `main` pool instead.
+
+Verified end to end through this second instance, not just installed:
+`backend-prod`, `frontend-prod`, `external-secrets`, and `ingress-nginx`
+all reach `Synced`/`Healthy` via `argocd app get`, with real pods running
+and a real Postgres-backed secret flowing from Key Vault through External
+Secrets Operator into the backend Deployment.
+
 ### Spot node eviction (tools pool)
 
 A live Spot eviction occurred on the `tools` node pool during build-out —
