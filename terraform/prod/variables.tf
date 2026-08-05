@@ -153,3 +153,27 @@ variable "test_aks_subnet_cidr" {
   type        = string
   default     = "10.0.1.0/24"
 }
+
+variable "admin_kubeconfig_path" {
+  description = "Path to aks-prod's admin kubeconfig, fetched via az aks get-credentials --admin. Used only to source cert material for the kubernetes/helm providers; the actual connection goes through a local SSH tunnel (see argocd.tf)."
+  type        = string
+  default     = "/root/.kube/aks-prod-admin-config"
+}
+
+variable "aks_tunnel_local_port" {
+  description = "Local port on the Terraform host that an SSH tunnel through the jumpbox forwards to aks-prod's private API server. Must be started manually before plan/apply (see argocd.tf comment). Distinct from test's port (16443) so both tunnels can coexist."
+  type        = number
+  default     = 16446
+}
+
+variable "gitlab_repo_token" {
+  description = "GitLab Project Access Token (read_repository scope) for ArgoCD to pull server-sorcery-101"
+  type        = string
+  sensitive   = true
+}
+
+variable "gitlab_repo_url" {
+  description = "HTTPS URL of the server-sorcery-101 GitLab repo"
+  type        = string
+  default     = "https://gitlab.com/kipkiruivans/server-sorcery-101.git"
+}

@@ -69,6 +69,24 @@ resource "azurerm_network_security_group" "aks" {
     source_address_prefix      = "*"
     destination_address_prefix = "*"
   }
+
+  # Same root cause as jumpbox.tf's AllowOutboundToProd: the default
+  # AllowVnetOutBound rule (via the "VirtualNetwork" tag) does not reliably
+  # cover peered ranges for outbound evaluation, confirmed via test-ip-flow
+  # earlier in this project. ArgoCD's pods run on this subnet and need to
+  # reach prod's AKS API directly for multi-cluster management - explicit
+  # CIDR instead of relying on the tag.
+  security_rule {
+    name                       = "AllowOutboundToProd"
+    priority                   = 200
+    direction                  = "Outbound"
+    access                     = "Allow"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
+    destination_address_prefix = var.prod_vnet_address_space
+  }
 }
 
 resource "azurerm_subnet_network_security_group_association" "aks" {

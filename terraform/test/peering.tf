@@ -15,7 +15,17 @@ resource "azurerm_virtual_network_peering" "test_to_prod" {
   # in test can reach prod (see prod's peer-prod-to-test object), but
   # nothing in prod can initiate a connection into test's VNet.
   allow_virtual_network_access = false
-  allow_forwarded_traffic      = false
-  allow_gateway_transit        = false
-  use_remote_gateways          = false
+
+  # true (not the original false): Azure CNI Overlay requires IP forwarding
+  # enabled on AKS node NICs so nodes can route their own pods' overlay
+  # traffic. That same flag makes Azure treat traffic crossing this peering
+  # from those nodes as "forwarded" traffic, which allow_forwarded_traffic
+  # gates independently of NSGs - confirmed via a real timeout from a pod
+  # on test's tools node pool to prod's AKS API (NSGs and DNS both verified
+  # correct first) that resolved once this was flipped. The jumpbox never
+  # needed this because its NIC has IP forwarding disabled, so its traffic
+  # was never subject to this check.
+  allow_forwarded_traffic = true
+  allow_gateway_transit   = false
+  use_remote_gateways     = false
 }
