@@ -205,3 +205,30 @@ resource "azurerm_subnet_network_security_group_association" "postgres" {
   subnet_id                 = azurerm_subnet.postgres.id
   network_security_group_id = azurerm_network_security_group.postgres.id
 }
+
+# --- NAT gateway for AKS outbound ---
+
+resource "azurerm_public_ip" "nat" {
+  name                = "pip-prod-natgw"
+  resource_group_name = azurerm_resource_group.prod.name
+  location            = azurerm_resource_group.prod.location
+  allocation_method   = "Static"
+  sku                 = "Standard"
+}
+
+resource "azurerm_nat_gateway" "prod" {
+  name                = "natgw-prod"
+  resource_group_name = azurerm_resource_group.prod.name
+  location            = azurerm_resource_group.prod.location
+  sku_name            = "Standard"
+}
+
+resource "azurerm_nat_gateway_public_ip_association" "prod" {
+  nat_gateway_id       = azurerm_nat_gateway.prod.id
+  public_ip_address_id = azurerm_public_ip.nat.id
+}
+
+resource "azurerm_subnet_nat_gateway_association" "aks" {
+  subnet_id      = azurerm_subnet.aks.id
+  nat_gateway_id = azurerm_nat_gateway.prod.id
+}
