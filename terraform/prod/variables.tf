@@ -147,3 +147,9 @@ variable "acr_resource_group_name" {
   type        = string
   default     = "rg-shared"
 }
+
+variable "test_aks_subnet_cidr" {
+  description = "CIDR of test's AKS node subnet (snet-test-aks). ArgoCD runs as pods in test's cluster and needs direct network reachability to prod's private AKS API server - Azure CNI Overlay means pod traffic is SNATed to the underlying node's VNet IP before it ever reaches the peering link, so this is the real source range for that traffic, not a narrower pod CIDR."
+  type        = string
+  default     = "10.0.1.0/24"
+}

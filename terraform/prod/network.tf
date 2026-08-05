@@ -36,6 +36,33 @@ resource "azurerm_network_security_group" "aks" {
     destination_address_prefix = "*"
   }
 
+  # ArgoCD runs as pods in test's AKS cluster and needs direct reachability
+  # to prod's private API server to manage it - there's no bastion/proxy
+  # option for ArgoCD's multi-cluster model, so this is a deliberate,
+  # known widening of prod's access boundary beyond "jumpbox only",
+  # required for GitOps to function, not an oversight.
+  #
+  # Scoped to test's AKS subnet specifically (not a wider tag) and port 443
+  # only. It can't be scoped narrower than the whole subnet: test's AKS
+  # cluster uses Azure CNI Overlay, so pod traffic is SNATed to the
+  # underlying node's VNet IP before it ever reaches the peering link -
+  # there's no pod-level CIDR to target. The NAT gateway doesn't help
+  # either, since NAT gateways only handle internet-bound egress by design;
+  # peered-VNet traffic bypasses it and keeps the original node IP. And all
+  # three of test's node pools share one subnet, so there's no narrower
+  # per-pool range without a disruptive redesign (separate subnet per pool).
+  security_rule {
+    name                       = "AllowTestAksInBound"
+    priority                   = 105
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "443"
+    source_address_prefix      = var.test_aks_subnet_cidr
+    destination_address_prefix = "*"
+  }
+
   security_rule {
     name                       = "AllowAzureLoadBalancerInBound"
     priority                   = 110
