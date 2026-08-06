@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: https://gitlab.com/kipkiruivans/server-sorcery-101.git
     targetRevision: main
-    path: sample-app/backend/helm
+    path: sample-app/backend/helm-DOES-NOT-EXIST-DOES-NOT-EXIST
     helm:
       values: |
 {{ .Files.Get "values-backend.yaml" | indent 8 }}
