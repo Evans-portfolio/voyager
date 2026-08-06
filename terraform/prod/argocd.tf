@@ -60,7 +60,16 @@ resource "helm_release" "argocd" {
   # default nodeSelector.
 
   # Dedicated low-privilege account for GitLab CI, scoped to sync/get on
-  # backend-prod and frontend-prod only - not admin. Mirrors the intent of
+  # backend-prod, frontend-prod, and app-of-apps-prod only - not admin.
+  # app-of-apps-prod access is required, not optional: it is the manual-
+  # sync-only root that renders backend-prod/frontend-prod's Application
+  # CRs, including the baked-in image tag from values-backend.yaml. Since
+  # it never auto-syncs (deliberate - prod stays gated behind approval,
+  # unlike test'''s auto-synced root), syncing only the child apps without
+  # it left their spec.source.helm.values permanently frozen at whatever
+  # tag was baked in at the very first deploy - every subsequent sync
+  # trivially "succeeded" against that same stale spec, never actually
+  # deploying new code. Mirrors the intent of
   # test's existing gitlab-ci AppProject role (argocd/test/applications/
   # templates/argocd-project.yaml), just via a local account instead of a
   # project role, since this instance's "default" AppProject is separate
@@ -89,6 +98,8 @@ resource "helm_release" "argocd" {
           p, gitlab-ci, applications, sync, default/backend-prod, allow
           p, gitlab-ci, applications, get, default/frontend-prod, allow
           p, gitlab-ci, applications, sync, default/frontend-prod, allow
+          p, gitlab-ci, applications, get, default/app-of-apps-prod, allow
+          p, gitlab-ci, applications, sync, default/app-of-apps-prod, allow
     EOT
   ]
 }

@@ -160,6 +160,16 @@ deploy-prod:
     # both token env vars keeps this job on the login session only.
     - unset ARGOCD_AUTH_TOKEN ARGOCD_PROD_AUTH_TOKEN
     - argocd login localhost:18444 --username gitlab-ci --password "$ARGOCD_PROD_GITLAB_CI_PASSWORD" --insecure --grpc-web
+    # app-of-apps-prod is the manual-sync-only root that renders
+    # backend-prod and frontend-prod Application CRs, including the baked-in
+    # image tag from values-backend.yaml. It never auto-syncs (deliberate -
+    # prod stays gated behind approval), so without syncing it here first,
+    # the child apps' spec.source.helm.values stays frozen at whatever was
+    # baked in on the very first deploy - every subsequent sync would
+    # trivially "succeed" against that same stale spec without ever
+    # actually deploying new code.
+    - argocd app sync app-of-apps-prod --server localhost:18444 --insecure --grpc-web
+    - argocd app wait app-of-apps-prod --health --sync --timeout 300 --server localhost:18444 --insecure --grpc-web
     - argocd app sync backend-prod frontend-prod --server localhost:18444 --insecure --grpc-web
     - argocd app wait backend-prod frontend-prod --health --sync --timeout 300 --server localhost:18444 --insecure --grpc-web
   environment:
