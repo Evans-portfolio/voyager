@@ -373,6 +373,65 @@ diagnosed and recovered from directly, confirming the Spot-for-non-critical
 workloads tradeoff behaves as expected under real conditions rather than
 just in theory.
 
+### Every prod pipeline run reported success while deploying nothing new
+
+For the length of a full working session, `deploy-prod` ran repeatedly,
+every run reporting `Synced` / `Healthy` / `Succeeded` through
+`argocd app sync` and `argocd app wait`. None of it was real: prod's
+running containers stayed on the very first image tag ever deployed
+(`f9b23909`) through every single one of those "successful" runs.
+
+**Root cause:** `backend-prod`/`frontend-prod`'s Application CRs get
+their image tag from `spec.source.helm.values`, which is populated via
+`.Files.Get "values-backend.yaml"` when `app-of-apps-prod` (the root
+Application) is rendered. `deploy-prod`'s pipeline stage committed the
+new tag to `values-backend.yaml` correctly, then called
+`argocd app sync backend-prod frontend-prod` — but never synced
+`app-of-apps-prod` itself. Since `app-of-apps-prod` is deliberately
+manual-sync-only (prod stays gated behind approval, unlike test's
+auto-synced root), nothing ever re-rendered it, so
+`spec.source.helm.values` stayed frozen at whatever was baked in on
+the very first deploy. Every subsequent `argocd app sync backend-prod`
+was reapplying that same stale, unchanged spec — which trivially
+"succeeded" because there was nothing to change, not because new code
+had shipped. Sync status and health status are not proof of a real
+deploy; they only prove the live state matches whatever spec the
+Application currently holds, and nothing forced that spec to update.
+
+**How it was found:** unrelated to chasing this bug directly. A prod
+Application was deliberately misconfigured (`backend-prod`'s Helm chart
+`path` pointed at a nonexistent directory) to verify the pipeline fails
+visibly on a bad config, per the project's engineering-review checklist.
+The first attempt didn't fail — it reported success, because the change
+sat uncommitted in `app-of-apps-prod`'s own unsynced spec and never
+reached the live Application at all. That non-result was the tell.
+Checking the live `backend` Deployment's actual running image tag
+directly against git `HEAD`, rather than trusting ArgoCD's own sync
+status, showed they had never matched — not just for this test, but
+across every prior "successful" prod deploy in the session.
+
+**Fix:** `deploy-prod` now runs `argocd app sync app-of-apps-prod` and
+`argocd app wait app-of-apps-prod` before syncing `backend-prod`/
+`frontend-prod`, so the new tag actually propagates into their specs
+before those apps are synced. This required extending the `gitlab-ci`
+service account's RBAC to include `get`/`sync` on
+`default/app-of-apps-prod` (previously, correctly, denied — the account
+was scoped to exactly what was believed necessary at the time, which
+turned out to be incomplete, not too broad). Confirmed via the same
+direct check that surfaced the bug: the live Deployment's image tag now
+matches the triggering commit on every real run.
+
+**Why this is a good "challenge faced" story:** a fully green pipeline —
+every stage passing, every ArgoCD status reading `Synced`/`Healthy` —
+was a false positive for the entire duration it ran. Nothing about the
+CI output or the ArgoCD UI would have surfaced this on its own; it only
+came apart because a deliberate failure test didn't behave as expected,
+and the follow-up was to check the actual deployed artifact against git
+rather than trust the tool's own success signal. It's the same lesson as
+the PromQL entry above, from a different layer of the stack: a status
+that says "succeeded" describes what the tool did, not necessarily what
+changed.
+
 ---
 
 ## Current Status
