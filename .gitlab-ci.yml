@@ -145,8 +145,9 @@ deploy-prod:
         git commit -m "ci: deploy backend/frontend $CI_COMMIT_SHORT_SHA to prod [skip ci]";
         git push origin HEAD:main;
       fi
-    - argocd app sync backend-prod frontend-prod --server localhost:18444 --insecure --grpc-web --auth-token "$ARGOCD_PROD_AUTH_TOKEN"
-    - argocd app wait backend-prod frontend-prod --health --sync --timeout 300 --server localhost:18444 --insecure --grpc-web --auth-token "$ARGOCD_PROD_AUTH_TOKEN"
+    - argocd login localhost:18444 --username gitlab-ci --password "$ARGOCD_PROD_GITLAB_CI_PASSWORD" --insecure --grpc-web
+    - argocd app sync backend-prod frontend-prod --server localhost:18444 --insecure --grpc-web
+    - argocd app wait backend-prod frontend-prod --health --sync --timeout 300 --server localhost:18444 --insecure --grpc-web
   environment:
     name: prod
   needs: ["approve-prod"]

@@ -60,17 +60,28 @@ resource "helm_release" "argocd" {
   # default nodeSelector.
 
   # Dedicated low-privilege account for GitLab CI, scoped to sync/get on
-  # backend-prod and frontend-prod only - not admin. Unlike test's
-  # ARGOCD_AUTH_TOKEN (a full-admin session token, since test never had a
-  # scoped account), this is the properly-scoped version. policy.default
-  # stays empty (deny by default) so gitlab-ci gets exactly what's granted
-  # below and nothing else - confirmed admin itself is exempt from RBAC
-  # policy in ArgoCD, so this can't lock out cluster operators.
+  # backend-prod and frontend-prod only - not admin. Mirrors the intent of
+  # test's existing gitlab-ci AppProject role (argocd/test/applications/
+  # templates/argocd-project.yaml), just via a local account instead of a
+  # project role, since this instance's "default" AppProject is separate
+  # from test's. policy.default stays empty (deny by default) so gitlab-ci
+  # gets exactly what's granted below and nothing else - confirmed admin
+  # itself is exempt from RBAC policy in ArgoCD, so this can't lock out
+  # cluster operators.
+  #
+  # "login" capability (in addition to apiKey): deploy-prod logs in fresh
+  # each run instead of using a long-lived stored token. A long-lived
+  # apiKey token (and, separately, test's long-lived project-role token)
+  # was observed going invalid ("token signature is invalid") within
+  # roughly 15-40 minutes of being issued, on both clusters, with no pod
+  # restart and no change to the underlying signing key - root cause not
+  # pinned down. Logging in immediately before use sidesteps it rather
+  # than depending on a token surviving the gap between CI runs.
   values = [
     <<-EOT
     configs:
       cm:
-        accounts.gitlab-ci: apiKey
+        accounts.gitlab-ci: apiKey, login
       rbac:
         policy.default: ""
         policy.csv: |
