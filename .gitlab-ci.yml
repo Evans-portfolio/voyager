@@ -1,4 +1,5 @@
 # Pipeline # deploy-prod targets aks-prod
+# deploy-prod authenticates via login, not a stored token
 stages: build/test both environments, deploy test automatically, deploy prod behind manual approval.
 stages:
   - test
