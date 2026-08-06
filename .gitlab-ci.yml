@@ -2,6 +2,7 @@
 # deploy-prod authenticates via login, not a stored token
 # fresh test token
 # retry: token confirmed good
+# root cause fixed: env var leak
 stages: build/test both environments, deploy test automatically, deploy prod behind manual approval.
 stages:
   - test
