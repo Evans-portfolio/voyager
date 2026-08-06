@@ -148,6 +148,15 @@ deploy-prod:
         git commit -m "ci: deploy backend/frontend $CI_COMMIT_SHORT_SHA to prod [skip ci]";
         git push origin HEAD:main;
       fi
+    # ARGOCD_AUTH_TOKEN (test's token) is a pipeline-wide CI/CD variable, so
+    # it is present in this job's environment too, not just deploy-test's.
+    # The argocd CLI falls back to reading ARGOCD_AUTH_TOKEN from the
+    # environment on every command when set, even after a successful
+    # "argocd login" - it was silently overriding the local session below
+    # with test's (wrong-cluster) token, causing every sync to fail
+    # signature validation against prod's different signing key. Clearing
+    # both token env vars keeps this job on the login session only.
+    - unset ARGOCD_AUTH_TOKEN ARGOCD_PROD_AUTH_TOKEN
     - argocd login localhost:18444 --username gitlab-ci --password "$ARGOCD_PROD_GITLAB_CI_PASSWORD" --insecure --grpc-web
     - argocd app sync backend-prod frontend-prod --server localhost:18444 --insecure --grpc-web
     - argocd app wait backend-prod frontend-prod --health --sync --timeout 300 --server localhost:18444 --insecure --grpc-web
