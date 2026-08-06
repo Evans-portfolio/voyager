@@ -58,6 +58,28 @@ build-frontend:
     - kill $(cat /tmp/argocd-pf-$CI_JOB_ID.pid) 2>/dev/null || true
     - rm -f /tmp/argocd-pf-$CI_JOB_ID.log /tmp/argocd-pf-$CI_JOB_ID.pid
 
+# prod's ArgoCD lives in aks-prod, not aks-test - separate template so
+# deploy-prod targets its own cluster/ArgoCD instance instead of test's.
+# The jumpbox runner already has direct network + DNS access to aks-prod's
+# private API (peering + private DNS zone link, both set up when aks-prod
+# was built) and the jumpbox's managed identity already holds AKS Cluster
+# User on aks-prod, so this is the same get-credentials + port-forward
+# pattern as test's template, just pointed at prod and on a different local
+# port (18444) so the two never collide if a pipeline ever runs both
+# concurrently.
+.deploy_template_prod: &deploy_template_prod
+  tags:
+    - jumpbox
+  before_script:
+    - az login --identity -o none
+    - az aks get-credentials -g rg-prod -n aks-prod --overwrite-existing
+    - kubectl -n argocd port-forward svc/argocd-server 18444:443 > /tmp/argocd-pf-$CI_JOB_ID.log 2>&1 &
+    - echo $! > /tmp/argocd-pf-$CI_JOB_ID.pid
+    - sleep 5
+  after_script:
+    - kill $(cat /tmp/argocd-pf-$CI_JOB_ID.pid) 2>/dev/null || true
+    - rm -f /tmp/argocd-pf-$CI_JOB_ID.log /tmp/argocd-pf-$CI_JOB_ID.pid
+
 deploy-test:
   stage: deploy-test
   <<: *deploy_template
@@ -94,7 +116,7 @@ approve-prod:
 
 deploy-prod:
   stage: deploy-prod
-  <<: *deploy_template
+  <<: *deploy_template_prod
   script:
     - 'sed -i "s/tag: \".*\"/tag: \"$CI_COMMIT_SHORT_SHA\"/" argocd/prod/applications/values-backend.yaml'
     - 'sed -i "s/tag: \".*\"/tag: \"$CI_COMMIT_SHORT_SHA\"/" argocd/prod/applications/values-frontend.yaml'
@@ -109,8 +131,8 @@ deploy-prod:
         git remote set-url origin "https://gitlab-push-token:${GITLAB_PUSH_TOKEN}@gitlab.com/kipkiruivans/server-sorcery-101.git";
         git push origin HEAD:main;
       fi
-    - argocd app sync backend-prod frontend-prod --server localhost:18443 --insecure --grpc-web --auth-token "$ARGOCD_AUTH_TOKEN"
-    - argocd app wait backend-prod frontend-prod --health --sync --timeout 300 --server localhost:18443 --insecure --grpc-web --auth-token "$ARGOCD_AUTH_TOKEN"
+    - argocd app sync backend-prod frontend-prod --server localhost:18444 --insecure --grpc-web --auth-token "$ARGOCD_PROD_AUTH_TOKEN"
+    - argocd app wait backend-prod frontend-prod --health --sync --timeout 300 --server localhost:18444 --insecure --grpc-web --auth-token "$ARGOCD_PROD_AUTH_TOKEN"
   environment:
     name: prod
   needs: ["approve-prod"]

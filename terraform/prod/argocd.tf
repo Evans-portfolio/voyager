@@ -58,4 +58,26 @@ resource "helm_release" "argocd" {
   # This schedules onto the main pool instead, which is untainted and
   # already where prod's backend/frontend land by the base chart's own
   # default nodeSelector.
+
+  # Dedicated low-privilege account for GitLab CI, scoped to sync/get on
+  # backend-prod and frontend-prod only - not admin. Unlike test's
+  # ARGOCD_AUTH_TOKEN (a full-admin session token, since test never had a
+  # scoped account), this is the properly-scoped version. policy.default
+  # stays empty (deny by default) so gitlab-ci gets exactly what's granted
+  # below and nothing else - confirmed admin itself is exempt from RBAC
+  # policy in ArgoCD, so this can't lock out cluster operators.
+  values = [
+    <<-EOT
+    configs:
+      cm:
+        accounts.gitlab-ci: apiKey
+      rbac:
+        policy.default: ""
+        policy.csv: |
+          p, gitlab-ci, applications, get, default/backend-prod, allow
+          p, gitlab-ci, applications, sync, default/backend-prod, allow
+          p, gitlab-ci, applications, get, default/frontend-prod, allow
+          p, gitlab-ci, applications, sync, default/frontend-prod, allow
+    EOT
+  ]
 }
