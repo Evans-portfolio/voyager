@@ -3,6 +3,7 @@
 # fresh test token
 # retry: token confirmed good
 # root cause fixed: env var leak
+# retry: prior failure was a sync collision, not auth
 stages: build/test both environments, deploy test automatically, deploy prod behind manual approval.
 stages:
   - test
