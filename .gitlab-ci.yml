@@ -93,17 +93,19 @@ deploy-test:
   stage: deploy-test
   <<: *deploy_template
   script:
-    - 'sed -i "s/tag: \".*\"/tag: \"$CI_COMMIT_SHORT_SHA\"/" argocd/test/applications/values-backend.yaml'
-    - 'sed -i "s/tag: \".*\"/tag: \"$CI_COMMIT_SHORT_SHA\"/" argocd/test/applications/values-frontend.yaml'
     - git config user.email "gitlab-ci@server-sorcery-101.local"
     - git config user.name "GitLab CI"
+    - git remote set-url origin "https://gitlab-push-token:${GITLAB_PUSH_TOKEN}@gitlab.com/kipkiruivans/server-sorcery-101.git"
+    - git fetch origin main
+    - git checkout -B main origin/main
+    - 'sed -i "s/tag: \".*\"/tag: \"$CI_COMMIT_SHORT_SHA\"/" argocd/test/applications/values-backend.yaml'
+    - 'sed -i "s/tag: \".*\"/tag: \"$CI_COMMIT_SHORT_SHA\"/" argocd/test/applications/values-frontend.yaml'
     - git add argocd/test/applications/values-backend.yaml argocd/test/applications/values-frontend.yaml
     - >
       if git diff --cached --quiet; then
         echo "No image tag changes to commit";
       else
         git commit -m "ci: deploy backend/frontend $CI_COMMIT_SHORT_SHA to test [skip ci]";
-        git remote set-url origin "https://gitlab-push-token:${GITLAB_PUSH_TOKEN}@gitlab.com/kipkiruivans/server-sorcery-101.git";
         git push origin HEAD:main;
       fi
     - argocd app sync backend frontend --server localhost:18443 --insecure --grpc-web --auth-token "$ARGOCD_AUTH_TOKEN"
@@ -127,17 +129,19 @@ deploy-prod:
   stage: deploy-prod
   <<: *deploy_template_prod
   script:
-    - 'sed -i "s/tag: \".*\"/tag: \"$CI_COMMIT_SHORT_SHA\"/" argocd/prod/applications/values-backend.yaml'
-    - 'sed -i "s/tag: \".*\"/tag: \"$CI_COMMIT_SHORT_SHA\"/" argocd/prod/applications/values-frontend.yaml'
     - git config user.email "gitlab-ci@server-sorcery-101.local"
     - git config user.name "GitLab CI"
+    - git remote set-url origin "https://gitlab-push-token:${GITLAB_PUSH_TOKEN}@gitlab.com/kipkiruivans/server-sorcery-101.git"
+    - git fetch origin main
+    - git checkout -B main origin/main
+    - 'sed -i "s/tag: \".*\"/tag: \"$CI_COMMIT_SHORT_SHA\"/" argocd/prod/applications/values-backend.yaml'
+    - 'sed -i "s/tag: \".*\"/tag: \"$CI_COMMIT_SHORT_SHA\"/" argocd/prod/applications/values-frontend.yaml'
     - git add argocd/prod/applications/values-backend.yaml argocd/prod/applications/values-frontend.yaml
     - >
       if git diff --cached --quiet; then
         echo "No image tag changes to commit";
       else
         git commit -m "ci: deploy backend/frontend $CI_COMMIT_SHORT_SHA to prod [skip ci]";
-        git remote set-url origin "https://gitlab-push-token:${GITLAB_PUSH_TOKEN}@gitlab.com/kipkiruivans/server-sorcery-101.git";
         git push origin HEAD:main;
       fi
     - argocd app sync backend-prod frontend-prod --server localhost:18444 --insecure --grpc-web --auth-token "$ARGOCD_PROD_AUTH_TOKEN"
