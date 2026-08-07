@@ -11,5 +11,8 @@ RUN npm run build
 
 FROM nginx:1.27-alpine
 COPY --from=builder /src/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/conf.d/default.conf.template
+COPY docker-entrypoint-resolver.sh /docker-entrypoint-resolver.sh
+RUN chmod +x /docker-entrypoint-resolver.sh
 EXPOSE 80
+ENTRYPOINT ["/docker-entrypoint-resolver.sh"]
