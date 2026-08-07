@@ -21,3 +21,19 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+  # cert-manager-cainjector continuously writes the live CA into
+  # clientConfig.caBundle on both webhook configs, a field Helm renders
+  # empty. Argo's diff otherwise flags this as permanent OutOfSync even
+  # though the object is correct and healthy - ignore just this field,
+  # not the whole resource.
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      name: cert-manager-webhook
+      jqPathExpressions:
+        - '.webhooks[]?.clientConfig.caBundle'
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+      name: cert-manager-webhook
+      jqPathExpressions:
+        - '.webhooks[]?.clientConfig.caBundle'
