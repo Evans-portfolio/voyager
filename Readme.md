@@ -432,6 +432,55 @@ the PromQL entry above, from a different layer of the stack: a status
 that says "succeeded" describes what the tool did, not necessarily what
 changed.
 
+### A curl-verified 502 on the real domain, one hop past what curl checked
+
+`https://kirui.dev` passed every check right after it went live: real TLS
+handshake, real Let's Encrypt cert, `curl https://kirui.dev` returning
+`200` with the actual page HTML. Minutes later, a real browser hit the
+same URL and got a 502 - on `/api/history`, a client-side `fetch()` call
+the React app makes automatically on load, which the root-path curl check
+never touched.
+
+**Root cause:** the frontend's own nginx (a second, internal proxy inside
+the frontend container, separate from the Ingress) has an `/api/` block
+that forwards to the backend Service. Its `resolver` directive - required
+for nginx to re-resolve that Service DNS name at request time rather than
+caching it once - had test's CoreDNS ClusterIP hardcoded into the image
+at build time. Prod's is a different address (each cluster's CoreDNS IP
+comes from its own service CIDR). Every prior check of prod's backend -
+direct curl to the Service from another pod, `kubectl logs`, ArgoCD
+health - went straight to the backend or through a localhost-forwarded
+tunnel, never through this specific frontend-container-to-backend proxy
+hop. The one path a real browser actually uses was the one path nothing
+had exercised yet.
+
+**Fix:** rather than hardcode a second, equally fragile per-environment
+IP, the resolver is now self-discovered from the pod's own
+`/etc/resolv.conf` at container startup (Kubernetes always populates this
+correctly) via a small entrypoint script and `envsubst`, scoped to just
+that one variable so nginx's own `$`-prefixed variables are left alone.
+Works correctly in either cluster automatically; can't go stale the same
+way again.
+
+**Same session, a second latent bug surfaced by the same push for real
+verification:** chasing this fix through CI hit test's ArgoCD being down
+for 6.5 hours - a Spot eviction on the `tools` pool that the self-heal
+cron *had* been detecting correctly every 30 minutes, but failing to
+recover from every single time. The script backgrounded its SSH tunnel
+with `ssh -f`, which forks and exits internally rather than becoming a
+bash-tracked background job - so `$!` on the next line was referencing a
+job that was never actually backgrounded, an unbound variable under
+`set -u` that crashed the script before it ever reached the actual fix
+logic. Six and a half hours of silent no-op runs, each one logging
+correctly that the pool was down and then dying before doing anything
+about it. Fixed by backgrounding with plain `nohup ... &` instead, so
+`$!` refers to something real.
+
+**Why both belong in the same note:** neither was found by looking for
+it. Both surfaced only because finishing the actual task (a real domain
+working for a real user, verified beyond the first successful curl)
+required going one hop further than the previous check had gone.
+
 ---
 
 ## Current Status
