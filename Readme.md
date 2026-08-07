@@ -244,8 +244,20 @@ resync back to whatever Git says.
   see Engineering Notes)
 - **Test environment sized smaller and non-HA** — single-zone AKS control
   plane, Burstable Postgres tier, no multi-AZ spread — reserved for prod only
-- Registry and state storage lifecycle/retention policies to be finalized
-  (see Known Limitations)
+- **ACR image retention** — the registry is Basic SKU, which does not
+  support native retention policies (Premium-only). Equivalent behavior is
+  a scheduled ACR Task (`purge-old-images`, daily at 03:00 UTC, system-
+  assigned managed identity with `Reader` + `AcrDelete` scoped to just this
+  registry) that keeps the most recent 10 tags per repository and deletes
+  the rest. Source in `scripts/acr-purge.sh`; created via:
+  ```
+  az acr task create --registry acrsorcerysorcery01 --name purge-old-images \
+    --cmd "mcr.microsoft.com/azure-cli:latest sh -c \"echo <base64 of scripts/acr-purge.sh> | base64 -d | sh\"" \
+    --schedule "0 3 * * *" --context /dev/null --assign-identity "[system]"
+  ```
+  Verified with a real manual run: both repos went from 46 tags to the
+  correct 10, with the two currently-deployed tags (test and prod)
+  confirmed still present afterward.
 
 ---
 
