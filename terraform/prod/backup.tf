@@ -76,6 +76,17 @@ resource "azurerm_role_assignment" "backup_storage_contributor" {
   principal_id         = azurerm_user_assigned_identity.backup.principal_id
 }
 
+# Storage Blob Data Contributor alone is not enough - same lesson as the
+# ACR purge task's identity: az storage blob upload-batch still resolves
+# the account via ARM first even with --auth-mode login, which fails
+# without ARM-level read access, surfacing as a misleading "blocked by
+# network rules" error. Confirmed live before adding this.
+resource "azurerm_role_assignment" "backup_storage_reader" {
+  scope                = azurerm_storage_account.backup.id
+  role_definition_name = "Reader"
+  principal_id         = azurerm_user_assigned_identity.backup.principal_id
+}
+
 output "backup_identity_client_id" {
   value = azurerm_user_assigned_identity.backup.client_id
 }
