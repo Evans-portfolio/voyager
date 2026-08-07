@@ -40,61 +40,85 @@ one I can walk through directly in review.
 
 ```mermaid
 flowchart TB
-    subgraph Shared["Shared account"]
-        ACR["Azure Container Registry<br/>Images: backend, frontend"]
+    subgraph Shared["Shared account (rg-shared)"]
+        ACR["Azure Container Registry (Basic)<br/>backend, frontend images<br/>+ scheduled purge task, keep-last-10"]
         TFState["Terraform state<br/>Blob storage backend"]
+        DNS["Public DNS zone: kirui.dev"]
+        Budget["Subscription budget<br/>25/50/75% → Action Group → email"]
     end
 
     subgraph Test["Test environment — live (rg-test · swedencentral)"]
         direction TB
         TNet["VNet & networking<br/>Subnets, NSGs, NAT gateway"]
-        Jumpbox["Jumpbox<br/>Bastion + kubectl access"]
-        AKSTest["AKS test<br/>Private, 3 node pools"]
-        PGTest["Postgres + Vault<br/>Private, HA off"]
-        IngTest["Ingress + DNS<br/>Auto DNS records"]
+        Jumpbox["Jumpbox<br/>Bastion + SSH tunnel for kubectl/Terraform"]
+        AKSTest["AKS test — private, Free tier<br/>3 node pools: main / tools / monitoring"]
+        ArgoTest["ArgoCD (test)<br/>app-of-apps, auto-sync + self-heal"]
+        LBTestExt["ingress-nginx — external LB<br/>public IP, plain HTTP"]
+        LBTestInt["argocd-server — internal LB<br/>private IP only"]
+        PGTest["Postgres Flexible Server<br/>Burstable, HA off"]
+        KVTest["Key Vault<br/>own privatelink zone"]
+        MonTest["Prometheus + Loki + Grafana<br/>test-only"]
     end
 
-    subgraph Prod["Prod environment — staged (rg-prod · pending Azure quota approval)"]
+    subgraph Prod["Prod environment — live (rg-prod · swedencentral)"]
         direction TB
-        PNet["VNet & network<br/>Same shape as test"]
-        AKSProd["AKS prod<br/>HA, multi-AZ pools"]
-        PGProd["Postgres + KV<br/>Zone-redundant HA"]
+        PNet["VNet & networking<br/>Same shape as test"]
+        AKSProd["AKS prod — private, Standard tier (HA)<br/>3 node pools, main zone-spread 1/2/3"]
+        ArgoProd["ArgoCD (prod)<br/>app-of-apps, manual sync only"]
+        LBProdExt["ingress-nginx — external LB<br/>public IP, TLS via cert-manager"]
+        LBProdInt["argocd-server — internal LB<br/>private IP only"]
+        CertMgr["cert-manager<br/>Let's Encrypt, DNS-01 via Azure DNS"]
+        ExtDNS["External DNS<br/>writes A records into kirui.dev"]
+        PGProd["Postgres Flexible Server<br/>GeneralPurpose, zone-redundant HA"]
+        KVProd["Key Vault<br/>own privatelink zone"]
     end
 
     AKSTest -->|AcrPull| ACR
-    AKSProd -.->|AcrPull, once live| ACR
-    Jumpbox -->|SSH| AKSTest
-    Jumpbox -.->|SSH, pending peering| PNet
-
-    style Prod stroke-dasharray: 6 4
-    style AKSProd stroke-dasharray: 3 3
-    style PNet stroke-dasharray: 3 3
-    style PGProd stroke-dasharray: 3 3
+    AKSProd -->|AcrPull| ACR
+    Jumpbox -->|SSH tunnel, on demand| AKSTest
+    Jumpbox -->|SSH tunnel, on demand| AKSProd
+    ArgoTest -.->|independent, no cross-VNet control plane traffic| ArgoProd
+    ExtDNS -->|creates/updates A records| DNS
+    CertMgr -->|DNS-01 challenge| DNS
+    Internet(("public internet")) -->|https://kirui.dev| LBProdExt
 ```
 
-**Note on networking:** Azure Private DNS Zones are linked one-per-VNet-name.
-Because the jumpbox is shared and sits on a single VNet, there is
-intentionally **no path from prod's private zone back into test** — this is
-an accepted, documented limitation rather than an oversight (see Engineering
-Notes below).
+ArgoCD is deliberately **two independent instances**, one per cluster, not
+one central instance managing both — each only ever talks to its own local
+Kubernetes API. That was a pivot from the original single-ArgoCD design
+after a real, diagnosed cross-VNet networking wall (see Engineering Notes).
+Each cluster also carries both an **external** load balancer (ingress-nginx,
+public, serves the sample app) and an **internal** one (argocd-server,
+private-IP-only, GitOps/operator tooling with no reason to be
+internet-reachable).
+
+**Note on networking:** Azure Private DNS Zones are linked one-per-VNet-name,
+so a VNet cannot link to two zones sharing a name at once (confirmed live via
+a rejected `terraform apply`). Postgres and Key Vault each follow the same
+fix: every environment owns its own same-named private DNS zone, linked only
+to its own VNet. One accepted side effect: the shared jumpbox lives in
+vnet-test, which already holds the link for test's own zones, so it cannot
+also resolve prod's Postgres or Key Vault by DNS name — direct-IP access is
+used instead for that specific admin path (see Engineering Notes).
 
 ### GitOps flow
 
 ```
 GitLab repo (this repo)
-    │  git push
+    │  git push to main
     ▼
-GitLab CI — test, build, push image + Helm chart to ACR
+GitLab CI — test, build, push image to ACR
     │
-    ▼
-ArgoCD (app-of-apps) — watches this repo, syncs to AKS
+    ├──▶ ArgoCD (test) — app-of-apps, auto-sync + self-heal, no approval needed
     │
-    ├── test namespace apps: auto-sync + self-heal
-    └── prod namespace apps: manual sync only, triggered from the
-        pipeline's post-approval stage
+    └──▶ approve-prod (manual gate, allow_failure: false — actually blocks)
+             │
+             ▼
+         ArgoCD (prod) — app-of-apps synced first (so child app values
+         actually refresh), then backend-prod/frontend-prod synced
 ```
 
-### Monitoring flow
+### Monitoring flow (test only — prod has no monitoring stack)
 
 ```
 Sample app + AKS nodes
@@ -103,8 +127,7 @@ Sample app + AKS nodes
 Prometheus (kube-prometheus-stack) ── PrometheusRule alerts ──▶ Alertmanager ──▶ Slack
     │
     ▼
-Grafana ◀── Loki (via Promtail) ── pod logs
-```
+Grafana ◀── Loki (via Promtail) ── pod logs, incl. AUTH: register/login/logout
 
 ---
 
