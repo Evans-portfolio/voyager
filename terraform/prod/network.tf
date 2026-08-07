@@ -91,6 +91,25 @@ resource "azurerm_network_security_group" "aks" {
     destination_address_prefix = "*"
   }
 
+  # Public internet access to the frontend's real domain (kirui.dev) -
+  # ingress-nginx's LoadBalancer, and its NodePort backing on the AKS
+  # subnet, need to actually be reachable for the site to load. Uses the
+  # "Internet" service tag specifically (not "*"), which resolves to
+  # actual public IP ranges and excludes the private/Azure-internal ranges
+  # already covered by the rules above - this only opens the internet path
+  # that was genuinely missing, not a broader allow.
+  security_rule {
+    name                       = "AllowInternetHttpsInBound"
+    priority                   = 130
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "443"
+    source_address_prefix      = "Internet"
+    destination_address_prefix = "*"
+  }
+
   security_rule {
     name                       = "DenyAllInBound"
     priority                   = 4096

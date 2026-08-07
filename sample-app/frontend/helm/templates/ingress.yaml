@@ -16,7 +16,10 @@ spec:
       secretName: {{ .Values.tls.secretName | quote }}
   {{- end }}
   rules:
-    - http:
+    - {{- if .Values.tls.enabled }}
+      host: {{ .Values.externalDnsHostname | quote }}
+      {{- end }}
+      http:
         paths:
           - path: /health
             pathType: Exact
