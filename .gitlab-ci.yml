@@ -130,6 +130,12 @@ approve-prod:
   script:
     - echo "Manual approval gate for prod deploy"
   when: manual
+  # when:manual jobs default to allow_failure: true, which means the
+  # pipeline treats an un-played manual job as non-blocking and proceeds
+  # to the next stage anyway - deploy-prod ran automatically without
+  # anyone approving it because of this. allow_failure: false makes the
+  # pipeline actually wait for a human to click play.
+  allow_failure: false
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
 
