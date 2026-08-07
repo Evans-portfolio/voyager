@@ -1,0 +1,74 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+  namespace: sample-app
+spec:
+  schedule: "0 2 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            azure.workload.identity/use: "true"
+        spec:
+          serviceAccountName: postgres-backup
+          restartPolicy: OnFailure
+          nodeSelector:
+            kubernetes.azure.com/agentpool: main
+          initContainers:
+            - name: pg-dump
+              image: postgres:16-alpine
+              command: ["sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  export PGPASSWORD="$DB_PASSWORD"
+                  pg_dump -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" --format=custom \
+                    -f "/backup/postgres-$(date -u +%Y%m%dT%H%M%SZ).dump"
+                  ls -la /backup
+              env:
+                - name: DB_HOST
+                  value: psql-prod-sorcery.postgres.database.azure.com
+                - name: DB_USER
+                  value: pgadmin
+                - name: DB_NAME
+                  value: postgres
+                - name: DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-credentials
+                      key: password
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
+          containers:
+            - name: upload
+              image: mcr.microsoft.com/azure-cli:latest
+              command: ["sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  az login --identity -o none
+                  az storage blob upload-batch \
+                    --destination postgres-backups \
+                    --source /backup \
+                    --account-name stbackupprodsorcery01 \
+                    --auth-mode login \
+                    --overwrite
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  cpu: 200m
+                  memory: 256Mi
+          volumes:
+            - name: backup
+              emptyDir: {}
