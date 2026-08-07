@@ -11,14 +11,23 @@ resource "azurerm_key_vault" "prod" {
   purge_protection_enabled      = false
 }
 
-# Key Vault's private DNS zone name (privatelink.vaultcore.azure.net) is
-# fixed by Azure, not per-environment - a VNet can only link to one zone
-# per name, and vnet-test already owns the link for this one. Prod's
-# private endpoint registers into test's existing zone instead of a
-# second, same-named zone of its own. See terraform/test/shared-dns-links.tf
-# for the vnet-prod link added to that zone.
-locals {
-  test_vault_dns_zone_id = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/${var.test_resource_group_name}/providers/Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net"
+# Same per-environment pattern as postgres.tf's privatelink zone: prod
+# owns its own privatelink.vaultcore.azure.net zone in rg-prod, linked
+# only to vnet-prod. This used to register into test's zone instead
+# (cross-RG, on the mistaken assumption that a same-named zone could only
+# exist once per subscription) - see terraform/test/shared-dns-links.tf
+# for why that assumption was wrong and why this is now consistent with
+# how Postgres was already doing it.
+resource "azurerm_private_dns_zone" "vault" {
+  name                = "privatelink.vaultcore.azure.net"
+  resource_group_name = azurerm_resource_group.prod.name
+}
+
+resource "azurerm_private_dns_zone_virtual_network_link" "vault" {
+  name                  = "vnet-prod-link"
+  resource_group_name   = azurerm_resource_group.prod.name
+  private_dns_zone_name = azurerm_private_dns_zone.vault.name
+  virtual_network_id    = azurerm_virtual_network.prod.id
 }
 
 resource "azurerm_private_endpoint" "vault" {
@@ -36,7 +45,7 @@ resource "azurerm_private_endpoint" "vault" {
 
   private_dns_zone_group {
     name                 = "default"
-    private_dns_zone_ids = [local.test_vault_dns_zone_id]
+    private_dns_zone_ids = [azurerm_private_dns_zone.vault.id]
   }
 }
 
