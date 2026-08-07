@@ -30,6 +30,22 @@ resource "azurerm_private_dns_zone_virtual_network_link" "vault" {
   virtual_network_id    = azurerm_virtual_network.prod.id
 }
 
+# Side effect of the fix above, same shape as the already-accepted Postgres
+# limitation (see terraform/test/shared-dns-links.tf): vnet-test already
+# holds the link for its own same-named zone, so it cannot also link to
+# this one - confirmed live, jumpbox DNS lookup for
+# kv-sorcery-prod01.vault.azure.net now returns NXDOMAIN. Checked before
+# accepting this: the only jumpbox-side dependency on resolving it is
+# postgres.tf's password-relay provisioner, which is tied to Postgres
+# resource *creation* and does not re-run on a normal apply now that
+# prod's Postgres already exists. Everything on the live path - ESO inside
+# aks-prod resolving prod's own Key Vault via vnet-prod's own link - is
+# unaffected and confirmed working post-fix. If that provisioner ever
+# needs to re-run (e.g. Postgres recreation), pin the hostname to the
+# private endpoint's IP directly (an /etc/hosts entry on the jumpbox, or
+# curl --resolve) rather than depending on DNS - same workaround already
+# used for prod's Postgres FQDN from the jumpbox.
+
 resource "azurerm_private_endpoint" "vault" {
   name                = "pe-prod-keyvault"
   resource_group_name = azurerm_resource_group.prod.name
