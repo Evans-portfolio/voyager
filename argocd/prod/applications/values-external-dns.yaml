@@ -1,0 +1,34 @@
+provider:
+  name: azure-dns
+
+extraArgs:
+  azure-resource-group: rg-shared
+  azure-subscription-id: "1e861794-7144-4865-b882-75311ff1225d"
+  azure-user-assigned-identity-client-id: "25e178ce-561b-4df5-a00e-1c0aeb707fba"
+  txt-owner-id: aks-prod
+
+domainFilters:
+  - kirui.dev
+
+secretConfiguration:
+  enabled: true
+  mountPath: /etc/kubernetes/azure.json
+  subPath: azure.json
+  data:
+    azure.json: |
+      {
+        "tenantId": "7ba328b9-8f9f-4502-b9a0-65884b7f21bc",
+        "subscriptionId": "1e861794-7144-4865-b882-75311ff1225d",
+        "resourceGroup": "rg-shared",
+        "useWorkloadIdentityExtension": true
+      }
+
+podLabels:
+  azure.workload.identity/use: "true"
+
+serviceAccount:
+  annotations:
+    azure.workload.identity/client-id: "25e178ce-561b-4df5-a00e-1c0aeb707fba"
+
+nodeSelector:
+  kubernetes.azure.com/agentpool: main

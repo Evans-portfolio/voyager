@@ -11,4 +11,9 @@ resources:
     cpu: 125m
     memory: 96Mi
 
-externalDnsHostname: frontend.prod-private.example.com
+externalDnsHostname: kirui.dev
+
+tls:
+  enabled: true
+  clusterIssuer: letsencrypt-prod
+  secretName: kirui-dev-tls

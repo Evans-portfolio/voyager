@@ -1,0 +1,20 @@
+crds:
+  enabled: true
+
+podLabels:
+  azure.workload.identity/use: "true"
+
+serviceAccount:
+  annotations:
+    azure.workload.identity/client-id: "06515e0b-5a63-4b59-9bcd-f5ee5fbd3451"
+
+nodeSelector:
+  kubernetes.azure.com/agentpool: main
+
+webhook:
+  nodeSelector:
+    kubernetes.azure.com/agentpool: main
+
+cainjector:
+  nodeSelector:
+    kubernetes.azure.com/agentpool: main

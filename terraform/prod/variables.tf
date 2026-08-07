@@ -177,3 +177,15 @@ variable "gitlab_repo_url" {
   type        = string
   default     = "https://gitlab.com/kipkiruivans/server-sorcery-101.git"
 }
+
+variable "public_dns_zone_name" {
+  description = "Name of the shared public DNS zone prod's frontend is published under"
+  type        = string
+  default     = "kirui.dev"
+}
+
+variable "public_dns_zone_resource_group_name" {
+  description = "Resource group of the shared public DNS zone"
+  type        = string
+  default     = "rg-shared"
+}

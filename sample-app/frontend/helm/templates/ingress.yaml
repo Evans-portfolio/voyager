@@ -4,8 +4,17 @@ metadata:
   name: sample-app
   annotations:
     external-dns.alpha.kubernetes.io/hostname: {{ .Values.externalDnsHostname | quote }}
+    {{- if .Values.tls.enabled }}
+    cert-manager.io/cluster-issuer: {{ .Values.tls.clusterIssuer | quote }}
+    {{- end }}
 spec:
   ingressClassName: nginx
+  {{- if .Values.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.externalDnsHostname | quote }}
+      secretName: {{ .Values.tls.secretName | quote }}
+  {{- end }}
   rules:
     - http:
         paths:
