@@ -35,9 +35,9 @@ variable "tools_node_vm_size" {
 }
 
 variable "monitoring_node_vm_size" {
-  description = "VM size for the monitoring node pool"
+  description = "VM size for the monitoring node pool. Deliberately Basv2, not Bsv2 like main/tools - the subscriptions Standard Bsv2 Family vCPU quota is hard-capped at 0 (4 vCPUs already running from main+tools, no headroom for a third pool), confirmed live via az vm list-usage. Basv2 has 10 free vCPUs of headroom and is the same family prods main pool already uses successfully, so this pool can actually be scaled up without an Azure quota-increase ticket."
   type        = string
-  default     = "Standard_B2s_v2"
+  default     = "Standard_B2as_v2"
 }
 
 variable "pod_cidr" {

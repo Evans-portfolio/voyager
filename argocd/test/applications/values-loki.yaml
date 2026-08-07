@@ -13,12 +13,7 @@ loki:
 singleBinary:
   replicas: 1
   nodeSelector:
-    kubernetes.azure.com/agentpool: tools
-  tolerations:
-    - key: kubernetes.azure.com/scalesetpriority
-      operator: Equal
-      value: spot
-      effect: NoSchedule
+    kubernetes.azure.com/agentpool: monitoring
   resources:
     requests:
       cpu: 100m
