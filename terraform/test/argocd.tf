@@ -55,6 +55,21 @@ resource "helm_release" "argocd" {
           }
         ]
       }
+      # Internal LB: argocd-server gets a private IP inside vnet-test,
+      # reachable from the jumpbox/VNet only - never a public one. This is
+      # the project's internal load balancer, distinct from ingress-nginx's
+      # external one (public, serves the sample-app to the internet).
+      # Operator/GitOps tooling access has no reason to be internet-
+      # reachable, so it gets the internal LB instead of the SSH-tunnel +
+      # kubectl port-forward workflow used everywhere else this session.
+      server = {
+        service = {
+          type = "LoadBalancer"
+          annotations = {
+            "service.beta.kubernetes.io/azure-load-balancer-internal" = "true"
+          }
+        }
+      }
     })
   ]
 }

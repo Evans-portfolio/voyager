@@ -86,6 +86,10 @@ resource "helm_release" "argocd" {
   # restart and no change to the underlying signing key - root cause not
   # pinned down. Logging in immediately before use sidesteps it rather
   # than depending on a token surviving the gap between CI runs.
+  # server.service: internal LB, same reasoning as test's argocd.tf -
+  # argocd-server gets a private IP inside vnet-prod, reachable from the
+  # jumpbox/VNet only, never a public one. Distinct from ingress-nginx's
+  # external LB (public, serves the sample-app to the internet).
   values = [
     <<-EOT
     configs:
@@ -100,6 +104,11 @@ resource "helm_release" "argocd" {
           p, gitlab-ci, applications, sync, default/frontend-prod, allow
           p, gitlab-ci, applications, get, default/app-of-apps-prod, allow
           p, gitlab-ci, applications, sync, default/app-of-apps-prod, allow
+    server:
+      service:
+        type: LoadBalancer
+        annotations:
+          service.beta.kubernetes.io/azure-load-balancer-internal: "true"
     EOT
   ]
 }
