@@ -585,6 +585,38 @@ took prod down a few hours later. Retention policies for anything that
 gets deployed can't be pure janitorial logic; they need to know what's
 actually live.
 
+### The backup CronJob's storage firewall rule that never actually worked
+
+`postgres-backup`'s upload step failed with `AuthorizationFailure`
+against its own Storage Account for close to 24 hours, across two
+separate sessions, despite every other piece being independently
+confirmed correct: the workload identity, the `Storage Blob Data
+Contributor` role, and the firewall's IP allow-list itself (checked
+directly - the NAT gateway's IP was correct and unchanged the entire
+time). The failure looked exactly like a slow network-rule propagation
+delay (Microsoft's own docs cite up to 30 minutes for this), so the
+first instinct was to keep waiting - reasonable up to a point, wrong
+past it.
+
+The actual cause: an IP-based storage firewall rule assumes the
+request arrives from the public internet carrying the NAT gateway's
+egress IP. Same-region traffic from a VNet to a PaaS service doesn't
+reliably present that way to Storage's firewall - Azure's own guidance
+is to allow the VNet directly (a service endpoint) rather than try to
+pin down what IP same-region traffic will appear to come from. Adding
+`Microsoft.Storage` as a service endpoint on the AKS subnet and
+allow-listing that subnet on the storage account (alongside the
+existing IP rule, still needed for Terraform's own access from
+voyager) fixed it on the very next run, no propagation wait at all.
+
+**Why this belongs next to the outage above:** both were "the fix
+looked right and wasn't" stories, but for opposite reasons - the ACR
+fix was subtle and needed real testing to trust; this one *looked*
+like it just needed more patience, and the patience was the mistake.
+Confirmed with an actual clean CronJob run afterward, not just a debug
+pod: a 25,477-byte `.dump` file, listed directly from the container,
+timestamped within the same minute as the run.
+
 ---
 
 ## Current Status

@@ -16,18 +16,29 @@ resource "azurerm_storage_account" "backup" {
   # Not behind a private endpoint like the rest of prod's data-plane
   # resources - deliberately so, since a backup that depends on the same
   # private networking as the primary database is a weaker backup. Kept
-  # narrow instead: the NAT gateway's own public IP (the only egress path
-  # pods in vnet-prod actually have) plus voyager's own IP, since
-  # azurerm_storage_container/management_policy go through this account's
-  # data-plane API and Terraform itself (running on voyager) needs to
-  # reach it to manage them - same IP already trusted elsewhere in this
-  # project (the jumpbox SSH NSG rule).
+  # narrow instead.
+  #
+  # Originally IP-rule-only (NAT gateway public IP + voyager's IP, for
+  # Terraform itself managing the container/lifecycle policy). That
+  # turned out unreliable for the actual pod traffic: identity and RBAC
+  # were independently confirmed correct, the NAT gateway IP was
+  # confirmed correct and unchanged, and it still failed with
+  # AuthorizationFailure (the same error code Azure Storage uses for
+  # network-rule denials, not just RBAC ones) even ~24h after being set -
+  # past any real propagation window. Same-region traffic from a VNet
+  # doesn't reliably present as the literal NAT egress IP to Storage's
+  # firewall the way it does to plain internet endpoints. Added the VNet
+  # subnet directly instead (via the new service endpoint on
+  # snet-prod-aks in network.tf) - the Azure-recommended mechanism for
+  # this exact case. IP rules kept alongside for voyager's Terraform
+  # access, which is a genuinely separate, real internet egress path.
   network_rules {
     default_action = "Deny"
     ip_rules = [
       azurerm_public_ip.nat.ip_address,
       "65.109.11.230",
     ]
+    virtual_network_subnet_ids = [azurerm_subnet.aks.id]
   }
 }
 

@@ -17,6 +17,18 @@ resource "azurerm_subnet" "aks" {
   resource_group_name  = azurerm_resource_group.prod.name
   virtual_network_name = azurerm_virtual_network.prod.name
   address_prefixes     = [var.aks_subnet_cidr]
+
+  # Microsoft.Storage service endpoint: lets backup.tf's storage account
+  # allow traffic from this specific subnet by VNet identity instead of
+  # by matching the NAT gateway's public IP. The IP-based rule alone
+  # (still present) turned out unreliable for same-region Storage traffic
+  # - it never worked from a pod in this subnet even ~24h after being
+  # set, despite the IP being correct and RBAC being independently
+  # confirmed correct. This is the Azure-recommended mechanism for
+  # exactly this case (restrict a storage account to specific VNet
+  # traffic) rather than trying to pin down egress IPs for a PaaS
+  # service.
+  service_endpoints = ["Microsoft.Storage"]
 }
 
 resource "azurerm_network_security_group" "aks" {
