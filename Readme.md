@@ -269,18 +269,16 @@ resync back to whatever Git says.
   plane, Burstable Postgres tier, no multi-AZ spread — reserved for prod only
 - **ACR image retention** — the registry is Basic SKU, which does not
   support native retention policies (Premium-only). Equivalent behavior is
-  a scheduled ACR Task (`purge-old-images`, daily at 03:00 UTC, system-
-  assigned managed identity with `Reader` + `AcrDelete` scoped to just this
-  registry) that keeps the most recent 10 tags per repository and deletes
-  the rest. Source in `scripts/acr-purge.sh`; created via:
-  ```
-  az acr task create --registry acrsorcerysorcery01 --name purge-old-images \
-    --cmd "mcr.microsoft.com/azure-cli:latest sh -c \"echo <base64 of scripts/acr-purge.sh> | base64 -d | sh\"" \
-    --schedule "0 3 * * *" --context /dev/null --assign-identity "[system]"
-  ```
-  Verified with a real manual run: both repos went from 46 tags to the
-  correct 10, with the two currently-deployed tags (test and prod)
-  confirmed still present afterward.
+  a daily cron job on voyager (03:00 UTC, `scripts/acr-purge.sh`, using the
+  Terraform service principal's own `AcrDelete` + `Reader` role on the
+  registry) that keeps the most recent 10 tags per repository *and* never
+  deletes a tag currently declared in any environment's values files,
+  regardless of age or count. That second part is not optional - a naive
+  keep-10-by-recency policy caused a real production outage; see
+  Engineering Notes for the full story. This originally ran as an isolated
+  ACR Task rather than a voyager cron job; moved after the incident, since
+  the fix requires reading git state that an ACR Task's sandboxed container
+  has no path to.
 
 ---
 
@@ -515,6 +513,77 @@ about it. Fixed by backgrounding with plain `nohup ... &` instead, so
 it. Both surfaced only because finishing the actual task (a real domain
 working for a real user, verified beyond the first successful curl)
 required going one hop further than the previous check had gone.
+
+### A retention policy I wrote myself caused a real production outage
+
+`kirui.dev` returned 503 for 9+ hours. Every pod in `sample-app`
+(backend x2, frontend x2) was stuck in `ImagePullBackOff`:
+
+```
+failed to authorize: failed to fetch anonymous token: ...
+401 Unauthorized
+```
+
+That error text is ambiguous - it reads like it could be a missing tag
+*or* a broken pull permission, so both were checked independently before
+touching anything:
+
+1. **Did the tag exist?** No - `66880e99`, what `backend-prod`/
+   `frontend-prod` were pinned to, was gone from ACR entirely.
+2. **Was AcrPull broken?** `az role assignment list --assignee <kubelet
+   identity>` came back empty, which looked like confirmation - but that
+   specific query has a known Graph API resolution gap in this
+   environment (same one hit earlier working around missing `az ad user
+   list` access). Cross-checked by listing every role assignment scoped
+   to the registry directly instead: `AcrPull` was there, created two
+   days earlier, never modified. Permission was never the problem -
+   worth ruling out explicitly rather than assuming, since the timing
+   (same day as unrelated DNS/IAM work) made it a plausible-looking red
+   herring.
+
+**Actual cause:** the ACR purge task added earlier that same day
+(`keep-last-10 per repository`) had no concept of what tag was actually
+deployed anywhere - it purged by count alone. Every infra-only commit
+made that day (cert-manager fixes, a DNS zone rework, a diagram rebuild,
+none of which touched `sample-app` source at all) still triggered a full
+image rebuild under a new tag, because the pipeline's build stage runs
+unconditionally on any push to `main`. Ten of those pushed `66880e99`
+out of the keep-10 window by pure count, while it remained the only tag
+any Application actually referenced.
+
+**Fix:** rewrote the purge logic to check what tag every environment's
+values files currently declare *before* deleting anything, and exclude
+those tags outright regardless of age or how many newer ones exist.
+This also forced a mechanism change, not just a logic change: an ACR
+Task runs in an isolated, Microsoft-managed container with no path to
+either git or the clusters - it can prune by registry metadata alone,
+nothing else. Reading "what's currently deployed" needs to read the
+values files, so this moved to a cron job on voyager (`scripts/
+acr-purge.sh`, 03:00 UTC), which already had a git checkout and Azure CLI
+access for everything else in this project. Confirmed the fix
+specifically, not just that the script runs: simulated the exact failure
+mode by treating a genuinely-outside-the-window tag as protected and
+confirming the script skips deleting it, instead of just re-running
+against already-safe live state where the bug wouldn't have shown up
+either way.
+
+**Recovery:** repointed both values files at the newest existing tag,
+confirmed via `git log` path-filtering that zero commits had touched
+`sample-app` source since `66880e99` (so every tag between them is a
+functionally identical rebuild, not a guess at "close enough"), synced
+`app-of-apps-prod` before the child apps (same lesson as the earlier
+frozen-values bug), and verified for real: all 4 pods `Running`, `curl
+-v https://kirui.dev` returning a genuine `200`, and a full register /
+login / logout cycle against the live site.
+
+**Why this is the strongest story in this document:** it's not a bug in
+someone else's chart or a subtle Azure platform quirk - it's a design
+gap in automation I wrote myself, earlier the same day, in direct
+response to a checklist item ("confirm ACR has a retention policy"). The
+fix that satisfied the letter of that check was exactly the thing that
+took prod down a few hours later. Retention policies for anything that
+gets deployed can't be pure janitorial logic; they need to know what's
+actually live.
 
 ---
 
