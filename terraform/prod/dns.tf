@@ -59,3 +59,29 @@ resource "azurerm_role_assignment" "cert_manager_public_dns_contributor" {
 output "cert_manager_identity_client_id" {
   value = azurerm_user_assigned_identity.cert_manager.client_id
 }
+
+# Dedicated private DNS zone for app-level internal hostnames (e.g.
+# ArgoCD's internal load balancer), on the real kirui.dev subdomain.
+# Unlike test, prod had no equivalent zone at all before this - only the
+# auto-generated privatelink.* zones for AKS/Postgres/Key Vault.
+resource "azurerm_private_dns_zone" "internal_tooling" {
+  name                = "prod-private.kirui.dev"
+  resource_group_name = azurerm_resource_group.prod.name
+}
+
+resource "azurerm_private_dns_zone_virtual_network_link" "internal_tooling" {
+  name                  = "vnet-prod-link"
+  resource_group_name   = azurerm_resource_group.prod.name
+  private_dns_zone_name = azurerm_private_dns_zone.internal_tooling.name
+  virtual_network_id    = azurerm_virtual_network.prod.id
+}
+
+# 10.1.1.6 confirmed live via `kubectl get svc argocd-server -n argocd`
+# (aks-prod context) immediately before this was written.
+resource "azurerm_private_dns_a_record" "argocd_internal" {
+  name                = "argocd"
+  zone_name           = azurerm_private_dns_zone.internal_tooling.name
+  resource_group_name = azurerm_resource_group.prod.name
+  ttl                 = 300
+  records             = ["10.1.1.6"]
+}
