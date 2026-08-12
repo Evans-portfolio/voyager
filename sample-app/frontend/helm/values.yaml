@@ -19,7 +19,7 @@ resources:
 service:
   port: 80
 
-externalDnsHostname: frontend.test-private.example.com
+externalDnsHostname: "frontend.test-private.example.com,dnstest.test-private.example.com"
 
 tls:
   enabled: false
